@@ -1,0 +1,25 @@
+
+# .NET build output
+bin/
+obj/
+*.user
+.vs/
+
+# EF Core / local db & secrets
+appsettings.*.local.json
+*.db
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS & editor
+.DS_Store
+Thumbs.db
+.idea/
