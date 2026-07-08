@@ -1,0 +1,6 @@
+@Budgex.Api_HostAddress = http://localhost:5160
+
+GET {{Budgex.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

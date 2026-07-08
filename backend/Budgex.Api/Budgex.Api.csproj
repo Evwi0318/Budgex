@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Budgex.Infrastructure\Budgex.Infrastructure.csproj" />
+    <ProjectReference Include="..\Budgex.Application\Budgex.Application.csproj" />
+    <ProjectReference Include="..\Budgex.Domain\Budgex.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
