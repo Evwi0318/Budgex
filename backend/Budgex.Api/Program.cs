@@ -1,6 +1,11 @@
+using Budgex.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services.AddDbContext<BudgexDbContext> (options => options.UseNpgsql (builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Add services to the container.> (options => options.UseNpgsql (builder.Configuration.GetConnectionString("DefaultConnection")));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
