@@ -5,7 +5,7 @@ function App() {
   const [health, setHealth] = useState<string>("Loading...");
 
   useEffect(() => {
-    fetch("http://localhost:5160/api/health")
+    fetch(`${import.meta.env.VITE_API_URL}/api/health`)
       .then((response) => response.json())
       .then((data) => setHealth(data.status))
       .catch(() => setHealth("Could not reach API"));

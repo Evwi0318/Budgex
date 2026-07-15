@@ -13,9 +13,13 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy.WithOrigins(
+            "http://localhost:5173", 
+            "https://budgex-omega.vercel.app",
+            "https://budgex-p0e4qmp6v-wilbardevan03-1705s-projects.vercel.app" // Lägg till preview-länken här
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader();
     });
 });
 
