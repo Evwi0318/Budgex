@@ -1,12 +1,15 @@
 using Budgex.Domain.Entities;
+using Budgex.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Budgex.Infrastructure.Persistence;
 
 public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
-    : DbContext(options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
-    public DbSet<User> Users => Set<User>();
+    public DbSet<User> DomainUsers => Set<User>();
     public DbSet<BudgetMonth> BudgetMonths => Set<BudgetMonth>();
     public DbSet<IncomeSource> IncomeSources => Set<IncomeSource>();
     public DbSet<Expense> Expenses => Set<Expense>();
@@ -14,6 +17,8 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<User>(e =>
         {
             e.HasKey(u => u.Id);
