@@ -4,8 +4,7 @@ using Budgex.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 namespace Budgex.Api.Endpoints;
 using Budgex.Infrastructure.Persistence;
-
-
+using Microsoft.AspNetCore.Mvc;
 
 public static class AuthEndpoints
 {
@@ -14,7 +13,7 @@ public static class AuthEndpoints
         var group = app.MapGroup("/api/auth");
 
         group.MapPost("/register", async (
-            RegisterRequest request,
+           [FromBody] RegisterRequest request,
             UserManager<ApplicationUser> userManager,
             IUserRepository userRepository) =>
         {
@@ -55,7 +54,7 @@ public static class AuthEndpoints
         });
 
         group.MapPost("/login", async (
-    LoginRequest request,
+    [FromBody] LoginRequest request,
     UserManager<ApplicationUser> userManager,
     IUserRepository userRepository,
     ITokenService tokenService,
