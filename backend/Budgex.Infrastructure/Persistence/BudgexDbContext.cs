@@ -1,19 +1,26 @@
 using Budgex.Domain.Entities;
+using Budgex.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Budgex.Infrastructure.Persistence;
 
 public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
-    : DbContext(options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
-    public DbSet<User> Users => Set<User>();
+    public DbSet<User> DomainUsers => Set<User>();
     public DbSet<BudgetMonth> BudgetMonths => Set<BudgetMonth>();
     public DbSet<IncomeSource> IncomeSources => Set<IncomeSource>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<SavingsAccount> SavingsAccounts => Set<SavingsAccount>();
 
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<User>(e =>
         {
             e.HasKey(u => u.Id);
@@ -59,6 +66,16 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
         {
             e.HasKey(sa => sa.Id);
             e.Property(sa => sa.RuleValue).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<RefreshToken>(e =>
+        {
+            e.HasKey(rt => rt.Id);
+            e.HasIndex(rt => rt.Token).IsUnique();
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(rt => rt.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
