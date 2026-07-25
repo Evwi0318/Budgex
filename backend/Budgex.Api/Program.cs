@@ -10,6 +10,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Budgex.Api.Endpoints;
+using Budgex.Api.Extensions;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -107,30 +110,33 @@ app.MapAuthEndpoints();
 // Months
 app.MapGet("/api/months/{year}/{month}", async (
     int year, int month,
-    GetOrCreateBudgetMonth useCase) =>
+    GetOrCreateBudgetMonth useCase,
+    ClaimsPrincipal claimsPrincipal) =>
 {
-    // Temporärt hårdkodad userId tills auth är på plats i Fas 4
-    var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    var userId = claimsPrincipal.GetUserId();
     var result = await useCase.ExecuteAsync(userId, year, month);
     return Results.Ok(result);
-});
+}).RequireAuthorization();
+
 
 app.MapGet("/api/months/{id}/summary", async (
     Guid id,
-    GetBudgetSummary useCase) =>
+    GetBudgetSummary useCase,
+    ClaimsPrincipal claimsPrincipal) =>
 {
-    var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    var userId = claimsPrincipal.GetUserId();
     var result = await useCase.ExecuteAsync(id, userId);
     return result is null ? Results.NotFound() : Results.Ok(result);
-});
+}).RequireAuthorization();
 
 app.MapPost("/api/months/{id}/expenses", async (
     Guid id,
     ExpenseRequest request,
     IBudgetMonthRepository repo,
-    IExpenseRepository expenseRepo) =>
+    IExpenseRepository expenseRepo,
+    ClaimsPrincipal claimsPrincipal) =>
 {
-    var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    var userId = claimsPrincipal.GetUserId();
     var bm = await repo.GetByIdAsync(id, userId);
     if (bm is null) return Results.NotFound();
 
@@ -145,28 +151,31 @@ app.MapPost("/api/months/{id}/expenses", async (
     await expenseRepo.AddAsync(expense);
     await expenseRepo.SaveChangesAsync();
     return Results.Created($"/api/expenses/{expense.Id}", expense);
-});
+}).RequireAuthorization();
 
 app.MapDelete("/api/expenses/{id}", async (
     Guid id,
-    IExpenseRepository repo) =>
+    IExpenseRepository repo,
+    ClaimsPrincipal claimsPrincipal) =>
 {
-    var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    var userId = claimsPrincipal.GetUserId();
     var expense = await repo.GetByIdAsync(id, userId);
     if (expense is null) return Results.NotFound();
 
     await repo.DeleteAsync(expense);
     await repo.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization();
+
 
 app.MapPost("/api/months/{id}/savings-accounts", async (
     Guid id,
     SavingsAccountRequest request,
     IBudgetMonthRepository repo,
-    ISavingsAccountRepository savingsRepo) =>
+    ISavingsAccountRepository savingsRepo,
+    ClaimsPrincipal claimsPrincipal) =>
 {
-    var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    var userId = claimsPrincipal.GetUserId();
     var bm = await repo.GetByIdAsync(id, userId);
     if (bm is null) return Results.NotFound();
 
@@ -182,27 +191,31 @@ app.MapPost("/api/months/{id}/savings-accounts", async (
     await savingsRepo.AddAsync(account);
     await savingsRepo.SaveChangesAsync();
     return Results.Created($"/api/savings-accounts/{account.Id}", account);
-});
+}).RequireAuthorization();
+
 
 app.MapDelete("/api/savings-accounts/{id}", async (
     Guid id,
-    ISavingsAccountRepository repo) =>
+    ISavingsAccountRepository repo,
+    ClaimsPrincipal claimsPrincipal) =>
 {
-    var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    var userId = claimsPrincipal.GetUserId();
     var account = await repo.GetByIdAsync(id, userId);
     if (account is null) return Results.NotFound();
 
     await repo.DeleteAsync(account);
     await repo.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization();
+
 
 app.MapPut("/api/months/{id}/income", async (
     Guid id,
     IncomeRequest request,
-    IBudgetMonthRepository repo) =>
+    IBudgetMonthRepository repo,
+    ClaimsPrincipal claimsPrincipal) =>
 {
-    var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    var userId = claimsPrincipal.GetUserId();
     var bm = await repo.GetByIdAsync(id, userId);
     if (bm is null) return Results.NotFound();
 
@@ -231,7 +244,7 @@ app.MapPut("/api/months/{id}/income", async (
 
     await repo.SaveChangesAsync();
     return Results.Ok(GetOrCreateBudgetMonth.ToDto(bm));
-});
+}).RequireAuthorization();
 
 app.Run();
 
