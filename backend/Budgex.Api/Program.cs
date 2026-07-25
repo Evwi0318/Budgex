@@ -252,3 +252,5 @@ app.Run();
 record ExpenseRequest(string Name, decimal Amount, string Category);
 record SavingsAccountRequest(string Name, string Icon, string RuleType, decimal RuleValue);
 record IncomeRequest(decimal Salary, decimal CsnAmount, decimal CsnLoanPart);
+
+public partial class Program { }
