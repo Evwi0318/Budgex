@@ -6,12 +6,14 @@ namespace Budgex.Tests.Integration;
 public sealed class AuthEndpointsTests(AuthApiFactory factory)
     : IClassFixture<AuthApiFactory>
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly AuthApiFactory _factory = factory;
 
     [Fact]
     public async Task Register_WithNewEmail_ReturnsCreated()
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
         {
             email = $"{Guid.NewGuid()}@budgex.se",
             password = "Test1234!"
@@ -23,40 +25,43 @@ public sealed class AuthEndpointsTests(AuthApiFactory factory)
     [Fact]
     public async Task Register_WithDuplicateEmail_ReturnsConflict()
     {
+        var client = _factory.CreateClient();
         var email = $"{Guid.NewGuid()}@budgex.se";
         var request = new { email, password = "Test1234!" };
 
-        await _client.PostAsJsonAsync("/api/auth/register", request);
-        var secondResponse = await _client.PostAsJsonAsync("/api/auth/register", request);
+        await client.PostAsJsonAsync("/api/auth/register", request);
+        var secondResponse = await client.PostAsJsonAsync("/api/auth/register", request);
 
         Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
     }
 
     [Fact]
-    public async Task Login_WithCorrectCredentials_ReturnsTokens()
+    public async Task Login_WithCorrectCredentials_ReturnsAccessTokenAndSetsCookie()
     {
+        var client = _factory.CreateClientWithCookies();
         var email = $"{Guid.NewGuid()}@budgex.se";
         var password = "Test1234!";
 
-        await _client.PostAsJsonAsync("/api/auth/register", new { email, password });
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password });
 
-        var response = await _client.PostAsJsonAsync("/api/auth/login", new { email, password });
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
         var body = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(body);
         Assert.False(string.IsNullOrWhiteSpace(body!.AccessToken));
-        Assert.False(string.IsNullOrWhiteSpace(body.RefreshToken));
+        Assert.True(response.Headers.TryGetValues("Set-Cookie", out _));
     }
 
     [Fact]
     public async Task Login_WithWrongPassword_ReturnsUnauthorized()
     {
+        var client = _factory.CreateClient();
         var email = $"{Guid.NewGuid()}@budgex.se";
 
-        await _client.PostAsJsonAsync("/api/auth/register", new { email, password = "Test1234!" });
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Test1234!" });
 
-        var response = await _client.PostAsJsonAsync("/api/auth/login", new { email, password = "WrongPassword1!" });
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "WrongPassword1!" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -64,7 +69,9 @@ public sealed class AuthEndpointsTests(AuthApiFactory factory)
     [Fact]
     public async Task ProtectedEndpoint_WithoutToken_ReturnsUnauthorized()
     {
-        var response = await _client.GetAsync("/api/months/2026/7");
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/months/2026/7");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -72,56 +79,85 @@ public sealed class AuthEndpointsTests(AuthApiFactory factory)
     [Fact]
     public async Task ProtectedEndpoint_WithValidToken_ReturnsOk()
     {
+        var client = _factory.CreateClientWithCookies();
         var email = $"{Guid.NewGuid()}@budgex.se";
         var password = "Test1234!";
 
-        await _client.PostAsJsonAsync("/api/auth/register", new { email, password });
-        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new { email, password });
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password });
+        var loginResponse = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
         var tokens = await loginResponse.Content.ReadFromJsonAsync<AuthResponseDto>();
 
-        _client.DefaultRequestHeaders.Authorization =
+        client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
 
-        var response = await _client.GetAsync("/api/months/2026/7");
+        var response = await client.GetAsync("/api/months/2026/7");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+   [Fact]
+public async Task Refresh_WithValidCookie_ReturnsNewAccessToken()
+{
+    var client = _factory.CreateClientWithCookies();
+    var email = $"{Guid.NewGuid()}@budgex.se";
+    var password = "Test1234!";
+
+    await client.PostAsJsonAsync("/api/auth/register", new { email, password });
+    var loginResponse = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
+
+    Assert.True(loginResponse.Headers.TryGetValues("Set-Cookie", out var loginCookies));
+
+    var refreshResponse = await client.PostAsync("/api/auth/refresh", null);
+    var rawBody = await refreshResponse.Content.ReadAsStringAsync();
+
+    Assert.True(
+        refreshResponse.StatusCode == HttpStatusCode.OK,
+        $"Expected OK but got {refreshResponse.StatusCode}. Body: {rawBody}");
+}
+
     [Fact]
-    public async Task Refresh_WithUsedToken_ReturnsUnauthorized()
+    public async Task Refresh_CalledTwiceInARow_SecondCallSucceedsWithRotatedCookie()
     {
+        var client = _factory.CreateClientWithCookies();
         var email = $"{Guid.NewGuid()}@budgex.se";
         var password = "Test1234!";
 
-        await _client.PostAsJsonAsync("/api/auth/register", new { email, password });
-        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new { email, password });
-        var tokens = await loginResponse.Content.ReadFromJsonAsync<AuthResponseDto>();
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password });
+        await client.PostAsJsonAsync("/api/auth/login", new { email, password });
 
-        // Första refresh - ska lyckas och rotera token
-        await _client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = tokens!.RefreshToken });
+        var first = await client.PostAsync("/api/auth/refresh", null);
+        var second = await client.PostAsync("/api/auth/refresh", null);
 
-        // Andra refresh med SAMMA (nu redan använda) token - ska nekas
-        var replayResponse = await _client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = tokens.RefreshToken });
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+    }
 
-        Assert.Equal(HttpStatusCode.Unauthorized, replayResponse.StatusCode);
+    [Fact]
+    public async Task Refresh_WithoutCookie_ReturnsUnauthorized()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsync("/api/auth/refresh", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task Logout_ThenRefresh_ReturnsUnauthorized()
     {
+        var client = _factory.CreateClientWithCookies();
         var email = $"{Guid.NewGuid()}@budgex.se";
         var password = "Test1234!";
 
-        await _client.PostAsJsonAsync("/api/auth/register", new { email, password });
-        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new { email, password });
-        var tokens = await loginResponse.Content.ReadFromJsonAsync<AuthResponseDto>();
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password });
+        await client.PostAsJsonAsync("/api/auth/login", new { email, password });
 
-        await _client.PostAsJsonAsync("/api/auth/logout", new { refreshToken = tokens!.RefreshToken });
+        await client.PostAsync("/api/auth/logout", null);
 
-        var refreshResponse = await _client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = tokens.RefreshToken });
+        var refreshResponse = await client.PostAsync("/api/auth/refresh", null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, refreshResponse.StatusCode);
     }
 
-    private sealed record AuthResponseDto(string AccessToken, string RefreshToken, DateTime RefreshTokenExpiresAt);
+    private sealed record AuthResponseDto(string AccessToken, DateTime RefreshTokenExpiresAt);
 }
