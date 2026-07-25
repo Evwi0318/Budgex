@@ -43,4 +43,12 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
     {
         await _dbContainer.DisposeAsync();
     }
+
+    public HttpClient CreateClientWithCookies()
+{
+    return CreateClient(new WebApplicationFactoryClientOptions
+    {
+        HandleCookies = true
+    });
+}
 }
