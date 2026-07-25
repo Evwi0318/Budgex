@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Budgex.Api.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -100,6 +101,8 @@ if (app.Environment.IsDevelopment())
 
 // Health
 app.MapGet("/api/health", () => new { status = "healthy" });
+
+app.MapAuthEndpoints();
 
 // Months
 app.MapGet("/api/months/{year}/{month}", async (
