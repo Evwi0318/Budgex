@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+@theme {
+    --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+
+    --color-background: #0a0f0d;
+    --color-surface: #131b18;
+    --color-surface-hover: #1a2420;
+
+    --color-mint: #4ade80;
+    --color-mint-dim: #22c55e;
+
+    --color-text-primary: #f0fdf4;
+    --color-text-secondary: #94a3a1;
+    --color-text-danger: #f87171;
+}
+
+@layer base {
+    body {
+        background-color: var(--color-background);
+        color: var(--color-text-primary);
+        font-family: var(--font-sans);
+    }
+}
