@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroBalance } from "../components/budget/HeroBalance";
-import { IncomeForm } from "../components/budget/IncomeForm";
 import { ExpenseRow } from "../components/budget/ExpenseRow";
 import { Eyebrow } from "../components/ui/Eyebrow";
 import { useMonthQuery } from "../hooks/useMonthQuery";
@@ -71,14 +70,6 @@ export function Home() {
         safeToSpend={summary.safeToSpend}
         totalIncome={summary.disposableIncome}
         totalExpenses={summary.totalExpenses}
-      />
-
-      {/* key gör att formuläret återställs med rätt siffror när
-          man bläddrar till en annan månad */}
-      <IncomeForm
-        key={budget.id}
-        monthId={budget.id}
-        incomeSources={budget.incomeSources}
       />
 
       <div className="space-y-2">
