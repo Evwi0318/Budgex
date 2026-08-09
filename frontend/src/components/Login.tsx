@@ -12,37 +12,70 @@ export function Login() {
   const navigate = useNavigate();
   const { setAuth } = useAuth();
 
+  // Plockar ut ett läsbart felmeddelande oavsett om API:n svarar
+  // med { message: "..." } eller { errors: ["...", "..."] }
+  function extractErrorMessage(errorData: unknown): string {
+    if (typeof errorData === "object" && errorData !== null) {
+      const obj = errorData as { message?: string; errors?: string[] };
+      if (obj.message) return obj.message;
+      if (obj.errors && obj.errors.length > 0) return obj.errors.join(" ");
+    }
+    return "Något gick fel. Försök igen.";
+  }
+
+  async function login(): Promise<void> {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/auth/login`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // Ta emot refresh token-cookien
+        body: JSON.stringify({ email, password }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Fel e-post eller lösenord.");
+    }
+
+    const data = await response.json();
+    if (!data.accessToken) {
+      throw new Error("Inloggningen gav ingen token. Försök igen.");
+    }
+
+    setAuth(data.accessToken, email);
+    navigate("/");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const endpoint =
-        mode === "login"
-          ? `${import.meta.env.VITE_API_URL}/api/auth/login`
-          : `${import.meta.env.VITE_API_URL}/api/auth/register`;
+      if (mode === "register") {
+        // Register ger INGEN token — den skapar bara kontot.
+        // Därför loggar vi in direkt efteråt.
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/auth/register`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          }
+        );
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // Skicka refresh token-cookie
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        setError(errorData.message || "Something went wrong");
-        setLoading(false);
-        return;
+        if (!response.ok) {
+          const errorData = await response.json();
+          setError(extractErrorMessage(errorData));
+          setLoading(false);
+          return;
+        }
       }
 
-      const data = await response.json();
-      // data.accessToken och data.refreshTokenExpiresAt kommer från API:n
-      setAuth(data.accessToken, email); // userId sätts till email för nu (idealt skulle vi dekoda JWT)
-      navigate("/");
+      await login();
     } catch (err) {
-      setError("Network error");
+      setError(err instanceof Error ? err.message : "Nätverksfel. Kontrollera anslutningen.");
       setLoading(false);
     }
   }

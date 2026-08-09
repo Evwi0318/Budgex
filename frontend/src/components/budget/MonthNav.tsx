@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { formatMonthYear } from "../../lib/format";
 
 interface MonthNavProps {
   year: number;
@@ -7,25 +8,7 @@ interface MonthNavProps {
   onNext: () => void;
 }
 
-const monthNames = [
-  "januari",
-  "februari",
-  "mars",
-  "april",
-  "maj",
-  "juni",
-  "juli",
-  "augusti",
-  "september",
-  "oktober",
-  "november",
-  "december",
-];
-
 export function MonthNav({ year, month, onPrev, onNext }: MonthNavProps) {
-  const monthName = monthNames[month - 1];
-  const displayMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-
   return (
     <div className="flex items-center justify-center gap-4 py-4">
       <button
@@ -37,7 +20,7 @@ export function MonthNav({ year, month, onPrev, onNext }: MonthNavProps) {
       </button>
 
       <span className="text-base font-black text-white min-w-[140px] text-center">
-        {displayMonth} {year}
+        {formatMonthYear(month, year)}
       </span>
 
       <button

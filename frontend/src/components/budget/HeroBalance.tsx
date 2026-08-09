@@ -14,45 +14,31 @@ export function HeroBalance({
   totalIncome,
   totalExpenses,
 }: HeroBalanceProps) {
-  const isNegative = safeToSpend < 0;
+  const heading = safeToSpend < 0 ? "Över budget" : "Kvar att spendera";
 
   return (
     <Card variant="hero" className="mb-6">
-      <div className="flex flex-col items-center gap-6">
-        {/* Hero-talet */}
-        <div className="w-full">
-          <Eyebrow className="text-center mb-2">KVAR ATT SPENDERA</Eyebrow>
-          <div className="flex justify-center">
-            <HeroAmount value={safeToSpend} isNegative={isNegative} />
-          </div>
+      <div className="flex flex-col items-center gap-5">
+        {/* Hjälten — det enda lysande talet på skärmen */}
+        <div className="flex flex-col items-center gap-2">
+          <Eyebrow>{heading}</Eyebrow>
+          <HeroAmount value={safeToSpend} label={heading.toLowerCase()} />
         </div>
 
-        {/* Divider */}
         <div className="w-full h-px bg-[var(--color-border)]" />
 
-        {/* Statpar */}
-        <div className="w-full flex justify-between items-center gap-4">
-          <div className="flex-1">
-            <div className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-faint)] mb-1">
-              Inkomst
-            </div>
-            <Amount
-              value={totalIncome}
-              tone="positive"
-              size="lg"
-              aria-label={`Total inkomst: ${totalIncome} kronor`}
-            />
+        {/* Statparet — två kolumner med en hårfin lodrät kant emellan */}
+        <div className="w-full flex items-center">
+          <div className="flex-1 flex flex-col items-center gap-1">
+            <Eyebrow>Inkomst</Eyebrow>
+            <Amount value={totalIncome} tone="positive" size="lg" />
           </div>
-          <div className="flex-1">
-            <div className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-faint)] mb-1">
-              Utgifter
-            </div>
-            <Amount
-              value={totalExpenses}
-              tone="negative"
-              size="lg"
-              aria-label={`Totala utgifter: ${totalExpenses} kronor`}
-            />
+
+          <div className="w-px self-stretch bg-[var(--color-border)]" />
+
+          <div className="flex-1 flex flex-col items-center gap-1">
+            <Eyebrow>Utgifter</Eyebrow>
+            <Amount value={totalExpenses} tone="negative" size="lg" />
           </div>
         </div>
       </div>

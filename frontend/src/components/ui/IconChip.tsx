@@ -1,5 +1,7 @@
+import type { LucideIcon } from "lucide-react";
+
 interface IconChipProps {
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  icon: LucideIcon;
   tone?: "mint" | "muted";
   size?: "sm" | "md";
 }

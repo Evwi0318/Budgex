@@ -24,16 +24,17 @@ const sizeClasses = {
 export function Button({
   variant = "primary",
   size = "md",
+  className = "",
   children,
-  disabled,
   ...props
 }: ButtonProps) {
   const baseClasses = "transition-all duration-100 disabled:opacity-50";
 
   return (
+    // className plockas ut ur props och läggs sist, annars skulle
+    // en className från anroparen radera komponentens egna stilar
     <button
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}
-      disabled={disabled}
+      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       {...props}
     >
       {children}

@@ -1,42 +1,36 @@
-import { memo } from "react";
+import { formatKr } from "../../lib/format";
 
 interface HeroAmountProps {
   value: number;
-  isNegative?: boolean;
-  showLabel?: boolean;
-  label?: string;
+  /** Läses upp efter beloppet av skärmläsare, t.ex. "kvar att spendera" */
+  label: string;
+  /** "hero" på Hem (40px), "md" på Sparande (32px) */
+  size?: "hero" | "md";
 }
 
-const formatKr = (value: number): string => {
-  const kr = new Intl.NumberFormat("sv-SE", {
-    style: "decimal",
-    maximumFractionDigits: 0,
-  });
-  return `${kr.format(value)} kr`;
+const sizeClasses = {
+  hero: "text-[40px] leading-[44px]",
+  md: "text-[32px] leading-9",
 };
 
-export const HeroAmount = memo(function HeroAmount({
-  value,
-  isNegative = false,
-  showLabel = false,
-  label,
-}: HeroAmountProps) {
-  const formatted = formatKr(value);
-  const heroClass = isNegative ? "hero-amount--negative" : "hero-amount";
+/**
+ * Appens enda gradient- och glow-effekt. Den finns på exakt två ställen:
+ * hero-talet på Hem och överföringssumman på Sparande. Effekten är
+ * signaturen — den slutar vara det i samma sekund den används fler ställen.
+ *
+ * Själva gradienten och glowen ligger i .hero-amount i index.css.
+ */
+export function HeroAmount({ value, label, size = "hero" }: HeroAmountProps) {
+  // Härleds ur värdet i stället för att skickas in som prop,
+  // så färgen aldrig kan hamna i otakt med siffran
+  const toneClass = value < 0 ? "hero-amount--negative" : "hero-amount";
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <span
-        className={`${heroClass} text-5xl font-black leading-tight tabular-nums`}
-        aria-label={`${value} kronor${label ? ` ${label}` : ""}`}
-      >
-        {formatted}
-      </span>
-      {showLabel && label && (
-        <span className="text-xs font-semibold text-[var(--color-text-faint)] uppercase tracking-widest">
-          {label}
-        </span>
-      )}
-    </div>
+    <span
+      className={`${toneClass} ${sizeClasses[size]} font-extrabold tracking-tight tabular-nums`}
+      aria-label={`${formatKr(value)} ${label}`}
+    >
+      {formatKr(value)}
+    </span>
   );
-});
+}

@@ -1,49 +1,52 @@
-import { useCallback } from "react";
-import { useAuth } from "./useAuth.ts";
+import { useAuth } from "./useAuth";
 
+/**
+ * Fetch med access token påsatt, och automatisk förnyelse vid 401.
+ *
+ * Analogi: access token är armbandet du visar i entrén. Det gäller bara
+ * 15 minuter. Refresh token är kvittot i fickan — när armbandet gått ut
+ * går appen tillbaka till luckan, visar kvittot och får ett nytt armband,
+ * utan att du behöver logga in igen.
+ */
 export function useApi() {
-  const { accessToken, setAuth, logout } = useAuth();
+  const { accessToken, userId, setAuth, logout } = useAuth();
 
-  const request = useCallback(
-    async (url: string, options: RequestInit = {}) => {
-      const headers = new Headers(options.headers || {});
+  const request = async (url: string, options: RequestInit = {}) => {
+    const headers = new Headers(options.headers);
+    headers.set("Content-Type", "application/json");
 
-      // Lägg till access token om vi har en
-      if (accessToken) {
-        headers.set("Authorization", `Bearer ${accessToken}`);
-      }
+    if (accessToken) {
+      headers.set("Authorization", `Bearer ${accessToken}`);
+    }
 
-      headers.set("Content-Type", "application/json");
+    const response = await fetch(url, { ...options, headers });
 
-      let response = await fetch(url, { ...options, headers });
-
-      // Om 401 (token utgick) — försök att refresha
-      if (response.status === 401 && accessToken) {
-        const refreshResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/auth/refresh`,
-          {
-            method: "POST",
-            credentials: "include", // Skicka refresh token-cookie
-          },
-        );
-
-        if (refreshResponse.ok) {
-          const data = await refreshResponse.json();
-          setAuth(data.accessToken, ""); // userId hämtas från token senare, sätts till "" för nu
-          // Försök original-requesten igen med ny token
-          headers.set("Authorization", `Bearer ${data.accessToken}`);
-          response = await fetch(url, { ...options, headers });
-        } else {
-          // Refresh misslyckades — logga ut
-          logout();
-          throw new Error("Unauthorized");
-        }
-      }
-
+    // Allt annat än "token har gått ut" lämnas till anroparen
+    if (response.status !== 401 || !accessToken) {
       return response;
-    },
-    [accessToken, setAuth, logout],
-  );
+    }
+
+    const refreshResponse = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/auth/refresh`,
+      {
+        method: "POST",
+        credentials: "include", // refresh token ligger i en httpOnly-cookie
+      }
+    );
+
+    if (!refreshResponse.ok) {
+      logout();
+      throw new Error("Sessionen har gått ut. Logga in igen.");
+    }
+
+    const { accessToken: newToken } = await refreshResponse.json();
+    // userId skickas med oförändrat — refresh-svaret innehåller inget
+    // userId, och en tom sträng här skulle radera det ur localStorage
+    setAuth(newToken, userId ?? "");
+
+    headers.set("Authorization", `Bearer ${newToken}`);
+    return fetch(url, { ...options, headers });
+  };
 
   return { request };
 }

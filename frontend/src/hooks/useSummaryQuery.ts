@@ -1,11 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "./useApi";
 
+// Fälten speglar SummaryDto i backend exakt — ASP.NET serialiserar
+// PascalCase till camelCase, så DisposableIncome blir disposableIncome
 export interface BudgetSummary {
-  safeToSpend: number;
-  totalIncome: number;
+  disposableIncome: number;
   totalExpenses: number;
-  totalToTransfer: number;
+  totalSavings: number;
+  safeToSpend: number;
+  transferToBank: number;
 }
 
 export function useSummaryQuery(monthId: string) {

@@ -38,11 +38,11 @@ export function useMonthQuery(year: number, month: number) {
   return useQuery({
     queryKey: ["month", year, month],
     queryFn: async () => {
-      const response = await request(
-        `${import.meta.env.VITE_API_URL}/api/months/${year}/${month}`,
-      );
+      const url = `${import.meta.env.VITE_API_URL}/api/months/${year}/${month}`;
+      const response = await request(url);
+
       if (!response.ok) {
-        throw new Error("Failed to fetch month");
+        throw new Error(`Failed to fetch month: ${response.status}`);
       }
       return response.json() as Promise<BudgetMonth>;
     },

@@ -2,40 +2,9 @@ import { createBrowserRouter } from "react-router-dom";
 import { Login } from "./components/Login";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { AppShell } from "./components/layout/AppShell";
-
-// Placeholder för Home-skärm (kommer senare med riktiga data)
-function Home() {
-  return (
-    <div className="px-4 py-6">
-      <h1 className="text-2xl font-bold text-white mb-4">Hem</h1>
-      <p className="text-[var(--color-text-muted)]">Home-skärm kommer här...</p>
-    </div>
-  );
-}
-
-// Placeholder för Sparande-skärm
-function Savings() {
-  return (
-    <div className="px-4 py-6">
-      <h1 className="text-2xl font-bold text-white mb-4">Sparande</h1>
-      <p className="text-[var(--color-text-muted)]">
-        Sparande-skärm kommer här...
-      </p>
-    </div>
-  );
-}
-
-// Placeholder för Profil-skärm
-function Profile() {
-  return (
-    <div className="px-4 py-6">
-      <h1 className="text-2xl font-bold text-white mb-4">Profil</h1>
-      <p className="text-[var(--color-text-muted)]">
-        Profil-skärm kommer här...
-      </p>
-    </div>
-  );
-}
+import { Home } from "./pages/Home";
+import { Savings } from "./pages/Savings";
+import { Profile } from "./pages/Profile";
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +12,8 @@ export const router = createBrowserRouter([
     element: <Login />,
   },
   {
+    // Allt under "/" ligger bakom inloggning och delar samma skal
+    // med toppbar och bottennavigering
     path: "/",
     element: (
       <PrivateRoute>
@@ -50,18 +21,9 @@ export const router = createBrowserRouter([
       </PrivateRoute>
     ),
     children: [
-      {
-        index: true,
-        element: <Home />,
-      },
-      {
-        path: "savings",
-        element: <Savings />,
-      },
-      {
-        path: "profile",
-        element: <Profile />,
-      },
+      { index: true, element: <Home /> },
+      { path: "savings", element: <Savings /> },
+      { path: "profile", element: <Profile /> },
     ],
   },
 ]);

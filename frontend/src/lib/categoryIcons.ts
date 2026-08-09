@@ -12,8 +12,9 @@ import {
   Receipt,
   Plane,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const categoryMap: Record<string, typeof Home> = {
+const categoryMap: Record<string, LucideIcon> = {
   Boende: Home,
   Mat: ShoppingCart,
   Restaurang: Utensils,

@@ -24,18 +24,16 @@ export function ExpenseRow({
   const Icon = getCategoryIcon(category);
 
   return (
-    <Card className="flex items-center justify-between p-4">
-      <div className="flex items-center gap-3 flex-1">
+    <Card className="flex items-center justify-between">
+      <div className="flex items-center gap-3 min-w-0">
         <IconChip icon={Icon} />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-white truncate">
-            {name}
-          </div>
-        </div>
+        <span className="text-[15px] font-semibold text-[var(--color-text)] truncate">
+          {name}
+        </span>
       </div>
 
-      <div className="flex items-center gap-3 ml-4">
-        <Amount value={amount} tone="negative" size="sm" />
+      <div className="flex items-center gap-3 ml-4 shrink-0">
+        <Amount value={amount} tone="negative" />
         <button
           onClick={() => onDelete(id)}
           disabled={isDeleting}
