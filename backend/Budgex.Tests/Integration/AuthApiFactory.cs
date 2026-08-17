@@ -15,6 +15,11 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
 
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
+        // Testerna får inte hänga på utvecklarens user-secrets — utan detta
+        // startar de på min maskin men inte i CI
+        builder.UseSetting("Jwt:SecretKey", "integration-test-key-minst-32-tecken-langt");
+        builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
+
         builder.ConfigureServices(services =>
         {
             var descriptor = services.SingleOrDefault(
