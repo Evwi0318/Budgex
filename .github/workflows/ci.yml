@@ -27,6 +27,23 @@ jobs:
       - name: Test
         run: dotnet test backend/Budgex.sln --no-build --configuration Release
 
+      # Bryter bygget när ett paket som faktiskt levereras får en känd
+      # sårbarhet, så att vi får veta vid nästa PR i stället för när någon
+      # råkar titta
+      - name: Audit NuGet packages
+        run: |
+          dotnet list backend/Budgex.Api/Budgex.Api.csproj package --vulnerable --include-transitive 2>&1 | tee audit.txt
+          if grep -q "has the following vulnerable packages" audit.txt; then
+            echo "::error::Sårbara NuGet-paket i API:t"
+            exit 1
+          fi
+
+      # Testberoenden paketeras aldrig, så de stoppar inte bygget — men de
+      # ska synas, eftersom CI självt har åtkomst till hemligheter
+      - name: Audit test dependencies
+        continue-on-error: true
+        run: dotnet list backend/Budgex.Tests/Budgex.Tests.csproj package --vulnerable --include-transitive
+
   frontend:
     name: Lint & Build Frontend
     runs-on: ubuntu-latest
@@ -44,8 +61,16 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Audit npm packages
+        run: npm audit --audit-level=high
+        working-directory: frontend
+
       - name: Lint
         run: npm run lint
+        working-directory: frontend
+
+      - name: Typecheck
+        run: npx tsc -b --noEmit
         working-directory: frontend
 
       - name: Build
