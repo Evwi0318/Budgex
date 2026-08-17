@@ -1,5 +1,7 @@
 import { useAuth } from "./useAuth";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 /**
  * Fetch med access token påsatt, och automatisk förnyelse vid 401.
  *
@@ -11,41 +13,37 @@ import { useAuth } from "./useAuth";
 export function useApi() {
   const { accessToken, userEmail, setAuth, logout } = useAuth();
 
-  const request = async (url: string, options: RequestInit = {}) => {
-    const headers = new Headers(options.headers);
-    headers.set("Content-Type", "application/json");
+  const request = async <T>(path: string, options: RequestInit = {}) => {
+    const send = (token: string | null) => {
+      const headers = new Headers(options.headers);
+      headers.set("Content-Type", "application/json");
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+      return fetch(`${API_URL}${path}`, { ...options, headers });
+    };
 
-    if (accessToken) {
-      headers.set("Authorization", `Bearer ${accessToken}`);
-    }
+    let response = await send(accessToken);
 
-    const response = await fetch(url, { ...options, headers });
-
-    // Allt annat än "token har gått ut" lämnas till anroparen
-    if (response.status !== 401 || !accessToken) {
-      return response;
-    }
-
-    const refreshResponse = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/auth/refresh`,
-      {
+    if (response.status === 401 && accessToken) {
+      const refreshed = await fetch(`${API_URL}/api/auth/refresh`, {
         method: "POST",
-        credentials: "include", // refresh token ligger i en httpOnly-cookie
-      }
-    );
+        credentials: "include",
+      });
 
-    if (!refreshResponse.ok) {
-      logout();
-      throw new Error("Sessionen har gått ut. Logga in igen.");
+      if (!refreshed.ok) {
+        logout();
+        throw new Error("Sessionen har gått ut. Logga in igen.");
+      }
+
+      const { accessToken: newToken } = await refreshed.json();
+      setAuth(newToken, userEmail ?? "");
+      response = await send(newToken);
     }
 
-    const { accessToken: newToken } = await refreshResponse.json();
-    // E-posten skickas med oförändrad — refresh-svaret innehåller den
-    // inte, och en tom sträng här skulle radera den ur localStorage
-    setAuth(newToken, userEmail ?? "");
+    if (!response.ok) {
+      throw new Error(`${options.method ?? "GET"} ${path} gav ${response.status}`);
+    }
 
-    headers.set("Authorization", `Bearer ${newToken}`);
-    return fetch(url, { ...options, headers });
+    return response.status === 204 ? (null as T) : ((await response.json()) as T);
   };
 
   return { request };
