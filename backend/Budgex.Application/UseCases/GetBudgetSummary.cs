@@ -20,9 +20,6 @@ public sealed class GetBudgetSummary(IBudgetMonthRepository repo)
         var csn = bm.IncomeSources
             .FirstOrDefault(i => i.Type == IncomeType.Csn);
 
-        var csnAmount = csn?.Amount ?? 0m;
-        var csnLoan = csn?.LoanAmount ?? 0m;
-
         var expenses = bm.Expenses.Sum(e => e.Amount);
 
         var rules = bm.SavingsAccounts.Select<SavingsAccount, IAllocationRule>(sa =>
@@ -30,13 +27,14 @@ public sealed class GetBudgetSummary(IBudgetMonthRepository repo)
                 ? new FixedRule(sa.RuleValue)
                 : new PercentageRule(sa.RuleValue));
 
-        var result = BudgetCalculator.Calculate(salary, csnAmount, csnLoan, expenses, rules);
+        var result = BudgetCalculator.Calculate(
+            salary, csn?.Amount ?? 0m, csn?.LoanAmount ?? 0m, expenses, rules);
 
-        var csnGrant = csnAmount - csnLoan;
-        var disposable = salary + csnGrant;
-        var totalSavings = result.TransferToBank - csnLoan;
-
-        return new SummaryDto(disposable, expenses, totalSavings,
-            result.SafeToSpend, result.TransferToBank);
+        return new SummaryDto(
+            result.DisposableIncome,
+            expenses,
+            result.TotalSavings,
+            result.SafeToSpend,
+            result.TransferToBank);
     }
 }

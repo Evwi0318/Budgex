@@ -20,6 +20,6 @@ public static class BudgetCalculator
         var safeToSpend = disposableIncome - expenses - totalSavings;
         var transferToBank = csnLoanPart + totalSavings;
 
-        return new BudgetResult(safeToSpend, transferToBank);
+        return new BudgetResult(disposableIncome, totalSavings, safeToSpend, transferToBank);
     }
 }
