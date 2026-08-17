@@ -12,9 +12,16 @@ public static class AuthEndpoints
 {
     private const string RefreshTokenCookieName = "refreshToken";
 
+    public const string RateLimitPolicy = "auth";
+
+    // Två flikar som laddas samtidigt hinner skicka samma cookie innan den
+    // första rotationen slagit igenom. Inom det här fönstret räknas det som
+    // en kapplöpning, inte som ett stulet token.
+    private static readonly TimeSpan RotationGracePeriod = TimeSpan.FromSeconds(30);
+
     public static void MapAuthEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/auth");
+        var group = app.MapGroup("/api/auth").RequireRateLimiting(RateLimitPolicy);
 
         group.MapPost("/register", async (
             [FromBody] RegisterRequest request,
@@ -71,11 +78,22 @@ public static class AuthEndpoints
                 return Results.Unauthorized();
             }
 
+            if (await userManager.IsLockedOutAsync(applicationUser))
+            {
+                return Results.Problem(
+                    "För många misslyckade försök. Vänta en stund och försök igen.",
+                    statusCode: StatusCodes.Status429TooManyRequests);
+            }
+
             var passwordValid = await userManager.CheckPasswordAsync(applicationUser, request.Password);
             if (!passwordValid)
             {
+                // Räknaren är det som gör att femte felgissningen låser kontot
+                await userManager.AccessFailedAsync(applicationUser);
                 return Results.Unauthorized();
             }
+
+            await userManager.ResetAccessFailedCountAsync(applicationUser);
 
             var domainUser = await userRepository.GetByIdAsync(applicationUser.Id);
             if (domainUser is null)
@@ -84,12 +102,12 @@ public static class AuthEndpoints
             }
 
             var accessToken = tokenService.CreateAccessToken(domainUser);
-            var refreshToken = tokenService.CreateRefreshToken(domainUser.Id);
+            var (refreshToken, rawRefreshValue) = tokenService.CreateRefreshToken(domainUser.Id);
 
             db.RefreshTokens.Add(refreshToken);
             await db.SaveChangesAsync();
 
-            SetRefreshTokenCookie(httpContext, refreshToken.Token, refreshToken.ExpiresAt);
+            SetRefreshTokenCookie(httpContext, rawRefreshValue, refreshToken.ExpiresAt);
 
             return Results.Ok(new AuthResponse(accessToken, refreshToken.ExpiresAt));
         });
@@ -106,8 +124,10 @@ public static class AuthEndpoints
                 return Results.Unauthorized();
             }
 
+            var incomingHash = tokenService.HashRefreshToken(refreshTokenValue);
+
             var existingToken = await db.RefreshTokens
-                .FirstOrDefaultAsync(rt => rt.Token == refreshTokenValue);
+                .FirstOrDefaultAsync(rt => rt.TokenHash == incomingHash);
 
             if (existingToken is null)
             {
@@ -116,6 +136,35 @@ public static class AuthEndpoints
 
             if (existingToken.RevokedAt is not null)
             {
+                var replacement = existingToken.ReplacedByTokenId is null
+                    ? null
+                    : await db.RefreshTokens
+                        .FirstOrDefaultAsync(rt => rt.Id == existingToken.ReplacedByTokenId);
+
+                // Ersättaren måste fortfarande leva. Har även den roterats
+                // vidare är kedjan förbi det här token, och då är en ny
+                // användning av det något annat än en kapplöpning.
+                var isRace =
+                    DateTime.UtcNow - existingToken.RevokedAt.Value < RotationGracePeriod
+                    && replacement is not null
+                    && replacement.RevokedAt is null
+                    && replacement.ExpiresAt > DateTime.UtcNow;
+
+                if (isRace)
+                {
+                    var raceUser = await userRepository.GetByIdAsync(existingToken.UserId);
+                    if (raceUser is null)
+                    {
+                        return Results.Problem("Användarens domändata saknas.", statusCode: 500);
+                    }
+
+                    // Ingen ny cookie: den förfrågan som vann äger kedjan, och
+                    // vi kan ändå inte återskapa dess värde ur avtrycket
+                    return Results.Ok(new AuthResponse(
+                        tokenService.CreateAccessToken(raceUser),
+                        replacement!.ExpiresAt));
+                }
+
                 // Möjlig replay-attack: token har redan använts en gång tidigare.
                 // Återkalla alla aktiva tokens för denna användare som säkerhetsåtgärd.
                 var allUserTokens = await db.RefreshTokens
@@ -145,7 +194,7 @@ public static class AuthEndpoints
             }
 
             var newAccessToken = tokenService.CreateAccessToken(domainUser);
-            var newRefreshToken = tokenService.CreateRefreshToken(domainUser.Id);
+            var (newRefreshToken, newRawValue) = tokenService.CreateRefreshToken(domainUser.Id);
 
             existingToken.RevokedAt = DateTime.UtcNow;
             existingToken.ReplacedByTokenId = newRefreshToken.Id;
@@ -153,20 +202,23 @@ public static class AuthEndpoints
             db.RefreshTokens.Add(newRefreshToken);
             await db.SaveChangesAsync();
 
-            SetRefreshTokenCookie(httpContext, newRefreshToken.Token, newRefreshToken.ExpiresAt);
+            SetRefreshTokenCookie(httpContext, newRawValue, newRefreshToken.ExpiresAt);
 
             return Results.Ok(new AuthResponse(newAccessToken, newRefreshToken.ExpiresAt));
         });
 
         group.MapPost("/logout", async (
             HttpContext httpContext,
-            BudgexDbContext db) =>
+            BudgexDbContext db,
+            ITokenService tokenService) =>
         {
             if (httpContext.Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshTokenValue)
                 && !string.IsNullOrWhiteSpace(refreshTokenValue))
             {
+                var incomingHash = tokenService.HashRefreshToken(refreshTokenValue);
+
                 var existingToken = await db.RefreshTokens
-                    .FirstOrDefaultAsync(rt => rt.Token == refreshTokenValue);
+                    .FirstOrDefaultAsync(rt => rt.TokenHash == incomingHash);
 
                 if (existingToken is not null && existingToken.RevokedAt is null)
                 {
@@ -180,21 +232,21 @@ public static class AuthEndpoints
         });
     }
 
-   private static void SetRefreshTokenCookie(HttpContext httpContext, string token, DateTime expiresAt)
-{
-    var isDevelopment = httpContext.RequestServices
-        .GetRequiredService<IWebHostEnvironment>()
-        .IsDevelopment();
-
-    httpContext.Response.Cookies.Append(RefreshTokenCookieName, token, new CookieOptions
+    private static void SetRefreshTokenCookie(HttpContext httpContext, string token, DateTime expiresAt)
     {
-        HttpOnly = true,
-        Secure = !isDevelopment,
-        SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.None,
-        Expires = expiresAt,
-        Path = "/api/auth"
-    });
-}
+        var isDevelopment = httpContext.RequestServices
+            .GetRequiredService<IWebHostEnvironment>()
+            .IsDevelopment();
+
+        httpContext.Response.Cookies.Append(RefreshTokenCookieName, token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !isDevelopment,
+            SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.None,
+            Expires = expiresAt,
+            Path = "/api/auth"
+        });
+    }
 
     private static void ClearRefreshTokenCookie(HttpContext httpContext)
     {
@@ -207,5 +259,4 @@ public static class AuthEndpoints
 
 public sealed record RegisterRequest(string Email, string Password);
 public sealed record LoginRequest(string Email, string Password);
-public sealed record RefreshRequest(string RefreshToken);
 public sealed record AuthResponse(string AccessToken, DateTime RefreshTokenExpiresAt);

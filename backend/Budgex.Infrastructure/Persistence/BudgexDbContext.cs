@@ -21,9 +21,15 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
     {
         base.OnModelCreating(modelBuilder);
 
+        // Domänen sätter alltid sina egna Id:n (Guid.NewGuid() i entiteterna).
+        // Utan detta tror EF att nycklarna är databas-genererade, och en ny
+        // entitet som upptäcks via en navigation med satt Id spåras då som
+        // Modified i stället för Added → UPDATE mot en rad som inte finns
+        // → DbUpdateConcurrencyException.
         modelBuilder.Entity<User>(e =>
         {
             e.HasKey(u => u.Id);
+            e.Property(u => u.Id).ValueGeneratedNever();
             e.HasIndex(u => u.Email).IsUnique();
             e.HasMany(u => u.BudgetMonths)
              .WithOne()
@@ -34,6 +40,7 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
         modelBuilder.Entity<BudgetMonth>(e =>
         {
             e.HasKey(bm => bm.Id);
+            e.Property(bm => bm.Id).ValueGeneratedNever();
             e.HasIndex(bm => new { bm.UserId, bm.Year, bm.Month }).IsUnique();
             e.HasMany(bm => bm.IncomeSources)
              .WithOne()
@@ -52,6 +59,7 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
         modelBuilder.Entity<IncomeSource>(e =>
         {
             e.HasKey(i => i.Id);
+            e.Property(i => i.Id).ValueGeneratedNever();
             e.Property(i => i.Amount).HasPrecision(18, 2);
             e.Property(i => i.LoanAmount).HasPrecision(18, 2);
         });
@@ -59,19 +67,22 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
         modelBuilder.Entity<Expense>(e =>
         {
             e.HasKey(ex => ex.Id);
+            e.Property(ex => ex.Id).ValueGeneratedNever();
             e.Property(ex => ex.Amount).HasPrecision(18, 2);
         });
 
         modelBuilder.Entity<SavingsAccount>(e =>
         {
             e.HasKey(sa => sa.Id);
+            e.Property(sa => sa.Id).ValueGeneratedNever();
             e.Property(sa => sa.RuleValue).HasPrecision(18, 2);
         });
 
         modelBuilder.Entity<RefreshToken>(e =>
         {
             e.HasKey(rt => rt.Id);
-            e.HasIndex(rt => rt.Token).IsUnique();
+            e.Property(rt => rt.Id).ValueGeneratedNever();
+            e.HasIndex(rt => rt.TokenHash).IsUnique();
             e.HasOne<User>()
              .WithMany()
              .HasForeignKey(rt => rt.UserId)

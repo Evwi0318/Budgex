@@ -15,6 +15,11 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
 
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
+        // Testerna får inte hänga på utvecklarens user-secrets — utan detta
+        // startar de på min maskin men inte i CI
+        builder.UseSetting("Jwt:SecretKey", "integration-test-key-minst-32-tecken-langt");
+        builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
+
         builder.ConfigureServices(services =>
         {
             var descriptor = services.SingleOrDefault(
@@ -45,10 +50,20 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
     }
 
     public HttpClient CreateClientWithCookies()
-{
-    return CreateClient(new WebApplicationFactoryClientOptions
     {
-        HandleCookies = true
-    });
-}
+        return CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+    }
+
+    // För tester som behöver skicka en bestämd cookie i stället för den
+    // senast mottagna — annars går kapplöpningen inte att återskapa
+    public HttpClient CreateClientWithoutCookies()
+    {
+        return CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = false
+        });
+    }
 }

@@ -1,22 +1,17 @@
-import { useEffect, useState } from "react";
-import "./App.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "react-router-dom";
+import { AuthProvider } from "./context/AuthProvider";
+import { router } from "./Router";
+
+const queryClient = new QueryClient();
 
 function App() {
-  const [health, setHealth] = useState<string>("Loading...");
-
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/health`)
-      .then((response) => response.json())
-      .then((data) => setHealth(data.status))
-      .catch(() => setHealth("Could not reach API"));
-  }, []);
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <h1 className="text-3xl font-bold text-green-500">
-        API status: {health}
-      </h1>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 

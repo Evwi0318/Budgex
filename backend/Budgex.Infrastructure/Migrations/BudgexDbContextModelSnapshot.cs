@@ -25,7 +25,6 @@ namespace Budgex.Infrastructure.Migrations
             modelBuilder.Entity("Budgex.Domain.Entities.BudgetMonth", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("Month")
@@ -48,7 +47,6 @@ namespace Budgex.Infrastructure.Migrations
             modelBuilder.Entity("Budgex.Domain.Entities.Expense", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("Amount")
@@ -76,7 +74,6 @@ namespace Budgex.Infrastructure.Migrations
             modelBuilder.Entity("Budgex.Domain.Entities.IncomeSource", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("Amount")
@@ -103,7 +100,6 @@ namespace Budgex.Infrastructure.Migrations
             modelBuilder.Entity("Budgex.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -118,7 +114,7 @@ namespace Budgex.Infrastructure.Migrations
                     b.Property<DateTime?>("RevokedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Token")
+                    b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -127,7 +123,7 @@ namespace Budgex.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Token")
+                    b.HasIndex("TokenHash")
                         .IsUnique();
 
                     b.HasIndex("UserId");
@@ -138,7 +134,6 @@ namespace Budgex.Infrastructure.Migrations
             modelBuilder.Entity("Budgex.Domain.Entities.SavingsAccount", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("BudgetMonthId")
@@ -169,7 +164,6 @@ namespace Budgex.Infrastructure.Migrations
             modelBuilder.Entity("Budgex.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("Email")

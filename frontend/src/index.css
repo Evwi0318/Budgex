@@ -1,1 +1,105 @@
 @import "tailwindcss";
+
+@theme {
+    /* --- Yta --- */
+    --color-bg: #070b0a;
+    --color-surface: #101413;
+    --color-surface-2: #171c1a;
+    --color-border: #1e2422;
+
+    /* --- Mint (varumärke) --- */
+    --color-mint: #4ade80;
+    --color-mint-light: #b7f5ce;
+    --color-mint-dark: #166534;
+    --color-mint-wash: #4ade801a;
+
+    /* --- Semantik --- */
+    --color-danger: #fca5a5;
+    --color-danger-strong: #f87171;
+    --color-danger-wash: #fca5a51a;
+    --color-flame: #fbbf24;
+
+    /* --- Text --- */
+    --color-text: #ffffff;
+    --color-text-muted: #8a968f;
+    --color-text-faint: #667069;
+
+    /* --- Typografi --- */
+    --font-sans: "Nunito", ui-rounded, system-ui, sans-serif;
+
+    /* --- Hero-effekt (ENDAST på hero-talet) --- */
+    --gradient-hero: linear-gradient(160deg,
+            #eafff3 0%,
+            #a7f3c6 45%,
+            #56e098 100%);
+    --gradient-hero-danger: linear-gradient(160deg,
+            #ffecec 0%,
+            #fca5a5 50%,
+            #f06868 100%);
+    --gradient-hero-card: radial-gradient(120% 78% at 50% 0%,
+            rgba(74, 222, 128, 0.11) 0%,
+            rgba(74, 222, 128, 0) 62%);
+    --glow-mint: rgba(74, 222, 128, 0.38);
+    --glow-danger: rgba(248, 113, 113, 0.32);
+
+    /* --- Radie --- */
+    --radius-chip: 12px;
+    --radius-card: 20px;
+    --radius-hero: 24px;
+    --radius-pill: 999px;
+}
+
+@layer base {
+    body {
+        background-color: var(--color-bg);
+        color: var(--color-text);
+        font-family: var(--font-sans);
+    }
+
+    /* Tabular numbers för alla belopp */
+    .tabular-nums {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Hero-effekten (gradient + glow) */
+    .hero-amount {
+        color: var(--color-mint-light);
+        background-image: var(--gradient-hero);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 18px var(--glow-mint)) drop-shadow(0 0 42px var(--glow-mint));
+    }
+
+    .hero-amount--negative {
+        color: var(--color-danger);
+        background-image: var(--gradient-hero-danger);
+        filter: drop-shadow(0 0 18px var(--glow-danger)) drop-shadow(0 0 42px var(--glow-danger));
+    }
+
+    /* Hero-kort bakgrund */
+    .hero-card {
+        background-color: var(--color-surface);
+        background-image: var(--gradient-hero-card);
+    }
+
+    /* Fokusring */
+    *:focus-visible {
+        outline: 2px solid var(--color-mint);
+        outline-offset: 2px;
+    }
+
+    /* Reducera rörelse vid preference */
+    @media (prefers-reduced-motion: reduce) {
+        * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+
+        .hero-amount,
+        .hero-amount--negative {
+            filter: none;
+        }
+    }
+}

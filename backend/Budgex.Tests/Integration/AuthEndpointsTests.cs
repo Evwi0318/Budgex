@@ -67,6 +67,26 @@ public sealed class AuthEndpointsTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task Login_AfterFiveWrongPasswords_LocksTheAccount()
+    {
+        var client = _factory.CreateClient();
+        var email = $"{Guid.NewGuid()}@budgex.se";
+        var password = "Test1234!";
+
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password });
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            await client.PostAsJsonAsync("/api/auth/login", new { email, password = "WrongPassword1!" });
+        }
+
+        // Rätt lösenord ska inte längre släppa in — kontot är låst
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ProtectedEndpoint_WithoutToken_ReturnsUnauthorized()
     {
         var client = _factory.CreateClient();
@@ -157,6 +177,69 @@ public async Task Refresh_WithValidCookie_ReturnsNewAccessToken()
         var refreshResponse = await client.PostAsync("/api/auth/refresh", null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, refreshResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_TwiceWithTheSameCookie_KeepsTheSessionAlive()
+    {
+        var client = _factory.CreateClientWithoutCookies();
+        var cookie = await SignInAndGetRefreshCookie(client);
+
+        // Två flikar som laddas samtidigt skickar båda den gamla cookien
+        var first = await PostRefresh(client, cookie);
+        var second = await PostRefresh(client, cookie);
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+
+        // Det viktiga: kedjan lever vidare i stället för att spärras
+        var rotated = RefreshCookie(first);
+        var afterRace = await PostRefresh(client, rotated);
+
+        Assert.Equal(HttpStatusCode.OK, afterRace.StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_WithATokenTwoRotationsOld_RevokesEverything()
+    {
+        var client = _factory.CreateClientWithoutCookies();
+        var stolen = await SignInAndGetRefreshCookie(client);
+
+        // Kedjan rullar vidare två steg, så det stulna token ligger bakom
+        var second = await PostRefresh(client, stolen);
+        var third = await PostRefresh(client, RefreshCookie(second));
+        var current = RefreshCookie(third);
+
+        // Nu återanvänds det gamla — det är ingen kapplöpning längre
+        var replay = await PostRefresh(client, stolen);
+        Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
+
+        // Och hela sessionen ska vara spärrad, inte bara det stulna
+        var afterReplay = await PostRefresh(client, current);
+        Assert.Equal(HttpStatusCode.Unauthorized, afterReplay.StatusCode);
+    }
+
+    private async Task<string> SignInAndGetRefreshCookie(HttpClient client)
+    {
+        var email = $"{Guid.NewGuid()}@budgex.se";
+        var password = "Test1234!";
+
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password });
+        var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
+
+        return RefreshCookie(login);
+    }
+
+    private static string RefreshCookie(HttpResponseMessage response) =>
+        response.Headers.GetValues("Set-Cookie")
+            .First(c => c.StartsWith("refreshToken="))
+            .Split(';')[0];
+
+    private static Task<HttpResponseMessage> PostRefresh(HttpClient client, string cookie)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh");
+        request.Headers.Add("Cookie", cookie);
+        return client.SendAsync(request);
     }
 
     private sealed record AuthResponseDto(string AccessToken, DateTime RefreshTokenExpiresAt);

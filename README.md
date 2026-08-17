@@ -28,7 +28,17 @@ See [`/docs`](./docs) for the ER diagram and architecture decision records (ADRs
 
 ## Getting started
 
-<!-- TODO (Fas 1): local run instructions -->
+Secrets are never committed. Before the API will start, set them locally:
+
+```bash
+cd backend/Budgex.Api
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=budgex;Username=postgres;Password=postgres"
+dotnet user-secrets set "Jwt:SecretKey" "$(openssl rand -base64 48)"
+```
+
+The key must be at least 32 bytes — startup rejects anything shorter.
+
+<!-- TODO (Fas 1): remaining local run instructions -->
 
 ## Testing
 

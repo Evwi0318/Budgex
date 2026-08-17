@@ -35,17 +35,23 @@ public sealed class TokenService(IOptions<JwtSettings> jwtOptions) : ITokenServi
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public RefreshToken CreateRefreshToken(Guid userId) =>
-        new()
+    public (RefreshToken Token, string RawValue) CreateRefreshToken(Guid userId)
+    {
+        var rawValue = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+
+        var token = new RefreshToken
         {
             UserId = userId,
-            Token = GenerateSecureRandomToken(),
+            TokenHash = HashRefreshToken(rawValue),
             ExpiresAt = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpiryDays)
         };
 
-    private static string GenerateSecureRandomToken()
-    {
-        var randomBytes = RandomNumberGenerator.GetBytes(64);
-        return Convert.ToBase64String(randomBytes);
+        return (token, rawValue);
     }
+
+    // SHA-256 räcker och ska användas här: värdet är redan 64 slumpbytes,
+    // så det finns inget att gissa sig till. Lösenord behöver bcrypt för
+    // att de är korta och förutsägbara — det gäller inte det här.
+    public string HashRefreshToken(string rawValue) =>
+        Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(rawValue)));
 }
