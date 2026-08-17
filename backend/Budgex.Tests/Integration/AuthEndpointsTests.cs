@@ -67,6 +67,26 @@ public sealed class AuthEndpointsTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task Login_AfterFiveWrongPasswords_LocksTheAccount()
+    {
+        var client = _factory.CreateClient();
+        var email = $"{Guid.NewGuid()}@budgex.se";
+        var password = "Test1234!";
+
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password });
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            await client.PostAsJsonAsync("/api/auth/login", new { email, password = "WrongPassword1!" });
+        }
+
+        // Rätt lösenord ska inte längre släppa in — kontot är låst
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ProtectedEndpoint_WithoutToken_ReturnsUnauthorized()
     {
         var client = _factory.CreateClient();

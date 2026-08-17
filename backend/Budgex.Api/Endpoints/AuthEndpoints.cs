@@ -12,9 +12,11 @@ public static class AuthEndpoints
 {
     private const string RefreshTokenCookieName = "refreshToken";
 
+    public const string RateLimitPolicy = "auth";
+
     public static void MapAuthEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/auth");
+        var group = app.MapGroup("/api/auth").RequireRateLimiting(RateLimitPolicy);
 
         group.MapPost("/register", async (
             [FromBody] RegisterRequest request,
@@ -71,11 +73,22 @@ public static class AuthEndpoints
                 return Results.Unauthorized();
             }
 
+            if (await userManager.IsLockedOutAsync(applicationUser))
+            {
+                return Results.Problem(
+                    "För många misslyckade försök. Vänta en stund och försök igen.",
+                    statusCode: StatusCodes.Status429TooManyRequests);
+            }
+
             var passwordValid = await userManager.CheckPasswordAsync(applicationUser, request.Password);
             if (!passwordValid)
             {
+                // Räknaren är det som gör att femte felgissningen låser kontot
+                await userManager.AccessFailedAsync(applicationUser);
                 return Results.Unauthorized();
             }
+
+            await userManager.ResetAccessFailedCountAsync(applicationUser);
 
             var domainUser = await userRepository.GetByIdAsync(applicationUser.Id);
             if (domainUser is null)
