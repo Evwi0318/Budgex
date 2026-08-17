@@ -43,6 +43,22 @@ var jwtSettings = builder.Configuration
     .Get<JwtSettings>()
     ?? throw new InvalidOperationException("Jwt settings not found in configuration.");
 
+// HMAC-SHA256 vill ha minst 256 bitar. En kortare nyckel går att signera
+// med men är gissningsbar, och då är hela inloggningen värdelös.
+if (Encoding.UTF8.GetByteCount(jwtSettings.SecretKey) < 32)
+{
+    throw new InvalidOperationException("Jwt:SecretKey must be at least 32 bytes.");
+}
+
+// Nyckeln i appsettings.Development.json ligger i git. Om den någonsin
+// följer med till en riktig miljö ska appen vägra starta, inte signera
+// riktiga sessioner med en publik hemlighet.
+if (!builder.Environment.IsDevelopment() && jwtSettings.SecretKey.StartsWith("dev-secret"))
+{
+    throw new InvalidOperationException(
+        "The development Jwt:SecretKey must not be used outside Development.");
+}
+
 builder.Services
     .AddIdentityCore<ApplicationUser>(options =>
     {
