@@ -4,7 +4,7 @@ import { AuthContext } from "./AuthContext";
 import type { AuthContextType } from "./AuthContext";
 
 const ACCESS_TOKEN_KEY = "accessToken";
-const USER_ID_KEY = "userId";
+const USER_EMAIL_KEY = "userEmail";
 
 /**
  * Läser ett värde ur localStorage och kastar bort skräp. Strängarna
@@ -24,29 +24,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState(() =>
     readStoredValue(ACCESS_TOKEN_KEY)
   );
-  const [userId, setUserId] = useState(() => readStoredValue(USER_ID_KEY));
+  const [userEmail, setUserEmail] = useState(() =>
+    readStoredValue(USER_EMAIL_KEY)
+  );
 
   // Access token ligger i localStorage så att en omladdning inte
   // loggar ut användaren. Refresh token sköts av en httpOnly-cookie
   // som JavaScript aldrig kommer åt.
-  const setAuth = (token: string, id: string) => {
+  const setAuth = (token: string, email: string) => {
     if (!token) return; // en tom token får aldrig räknas som inloggad
     setAccessToken(token);
-    setUserId(id);
+    setUserEmail(email);
     localStorage.setItem(ACCESS_TOKEN_KEY, token);
-    localStorage.setItem(USER_ID_KEY, id);
+    localStorage.setItem(USER_EMAIL_KEY, email);
   };
 
   const logout = () => {
     setAccessToken(null);
-    setUserId(null);
+    setUserEmail(null);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(USER_ID_KEY);
+    localStorage.removeItem(USER_EMAIL_KEY);
   };
 
   const value: AuthContextType = {
     accessToken,
-    userId,
+    userEmail,
     setAuth,
     logout,
     isAuthenticated: accessToken !== null,

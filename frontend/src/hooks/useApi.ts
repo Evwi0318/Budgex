@@ -9,7 +9,7 @@ import { useAuth } from "./useAuth";
  * utan att du behöver logga in igen.
  */
 export function useApi() {
-  const { accessToken, userId, setAuth, logout } = useAuth();
+  const { accessToken, userEmail, setAuth, logout } = useAuth();
 
   const request = async (url: string, options: RequestInit = {}) => {
     const headers = new Headers(options.headers);
@@ -40,9 +40,9 @@ export function useApi() {
     }
 
     const { accessToken: newToken } = await refreshResponse.json();
-    // userId skickas med oförändrat — refresh-svaret innehåller inget
-    // userId, och en tom sträng här skulle radera det ur localStorage
-    setAuth(newToken, userId ?? "");
+    // E-posten skickas med oförändrad — refresh-svaret innehåller den
+    // inte, och en tom sträng här skulle radera den ur localStorage
+    setAuth(newToken, userEmail ?? "");
 
     headers.set("Authorization", `Bearer ${newToken}`);
     return fetch(url, { ...options, headers });

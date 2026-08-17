@@ -2,8 +2,8 @@ import { createContext } from "react";
 
 export interface AuthContextType {
   accessToken: string | null;
-  userId: string | null;
-  setAuth: (accessToken: string, userId: string) => void;
+  userEmail: string | null;
+  setAuth: (accessToken: string, userEmail: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
