@@ -82,7 +82,7 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
         {
             e.HasKey(rt => rt.Id);
             e.Property(rt => rt.Id).ValueGeneratedNever();
-            e.HasIndex(rt => rt.Token).IsUnique();
+            e.HasIndex(rt => rt.TokenHash).IsUnique();
             e.HasOne<User>()
              .WithMany()
              .HasForeignKey(rt => rt.UserId)

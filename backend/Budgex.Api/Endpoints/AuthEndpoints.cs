@@ -97,12 +97,12 @@ public static class AuthEndpoints
             }
 
             var accessToken = tokenService.CreateAccessToken(domainUser);
-            var refreshToken = tokenService.CreateRefreshToken(domainUser.Id);
+            var (refreshToken, rawRefreshValue) = tokenService.CreateRefreshToken(domainUser.Id);
 
             db.RefreshTokens.Add(refreshToken);
             await db.SaveChangesAsync();
 
-            SetRefreshTokenCookie(httpContext, refreshToken.Token, refreshToken.ExpiresAt);
+            SetRefreshTokenCookie(httpContext, rawRefreshValue, refreshToken.ExpiresAt);
 
             return Results.Ok(new AuthResponse(accessToken, refreshToken.ExpiresAt));
         });
@@ -119,8 +119,10 @@ public static class AuthEndpoints
                 return Results.Unauthorized();
             }
 
+            var incomingHash = tokenService.HashRefreshToken(refreshTokenValue);
+
             var existingToken = await db.RefreshTokens
-                .FirstOrDefaultAsync(rt => rt.Token == refreshTokenValue);
+                .FirstOrDefaultAsync(rt => rt.TokenHash == incomingHash);
 
             if (existingToken is null)
             {
@@ -158,7 +160,7 @@ public static class AuthEndpoints
             }
 
             var newAccessToken = tokenService.CreateAccessToken(domainUser);
-            var newRefreshToken = tokenService.CreateRefreshToken(domainUser.Id);
+            var (newRefreshToken, newRawValue) = tokenService.CreateRefreshToken(domainUser.Id);
 
             existingToken.RevokedAt = DateTime.UtcNow;
             existingToken.ReplacedByTokenId = newRefreshToken.Id;
@@ -166,20 +168,23 @@ public static class AuthEndpoints
             db.RefreshTokens.Add(newRefreshToken);
             await db.SaveChangesAsync();
 
-            SetRefreshTokenCookie(httpContext, newRefreshToken.Token, newRefreshToken.ExpiresAt);
+            SetRefreshTokenCookie(httpContext, newRawValue, newRefreshToken.ExpiresAt);
 
             return Results.Ok(new AuthResponse(newAccessToken, newRefreshToken.ExpiresAt));
         });
 
         group.MapPost("/logout", async (
             HttpContext httpContext,
-            BudgexDbContext db) =>
+            BudgexDbContext db,
+            ITokenService tokenService) =>
         {
             if (httpContext.Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshTokenValue)
                 && !string.IsNullOrWhiteSpace(refreshTokenValue))
             {
+                var incomingHash = tokenService.HashRefreshToken(refreshTokenValue);
+
                 var existingToken = await db.RefreshTokens
-                    .FirstOrDefaultAsync(rt => rt.Token == refreshTokenValue);
+                    .FirstOrDefaultAsync(rt => rt.TokenHash == incomingHash);
 
                 if (existingToken is not null && existingToken.RevokedAt is null)
                 {
