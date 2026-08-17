@@ -2,8 +2,33 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
+const modes = [
+  { id: "login", label: "Logga in" },
+  { id: "register", label: "Registrera" },
+] as const;
+
+type Mode = (typeof modes)[number]["id"];
+
+// API:t svarar med { message } vid konflikt och { errors } vid ogiltigt
+// lösenord — båda ska bli en läsbar rad
+function readError(body: unknown): string {
+  if (typeof body === "object" && body !== null) {
+    const { message, errors } = body as { message?: string; errors?: string[] };
+    if (message) return message;
+    if (errors?.length) return errors.join(" ");
+  }
+  return "Något gick fel. Försök igen.";
+}
+
+const inputClasses =
+  "w-full bg-[var(--color-surface-2)] text-white border border-[var(--color-border)] rounded-[var(--radius-card)] px-3 py-2 focus:outline-none focus:border-[var(--color-mint)]";
+
+const labelClasses = "block text-sm text-[var(--color-text-muted)] mb-2";
+
 export function Login() {
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -12,40 +37,13 @@ export function Login() {
   const navigate = useNavigate();
   const { setAuth } = useAuth();
 
-  // Plockar ut ett läsbart felmeddelande oavsett om API:n svarar
-  // med { message: "..." } eller { errors: ["...", "..."] }
-  function extractErrorMessage(errorData: unknown): string {
-    if (typeof errorData === "object" && errorData !== null) {
-      const obj = errorData as { message?: string; errors?: string[] };
-      if (obj.message) return obj.message;
-      if (obj.errors && obj.errors.length > 0) return obj.errors.join(" ");
-    }
-    return "Något gick fel. Försök igen.";
-  }
-
-  async function login(): Promise<void> {
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/auth/login`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // Ta emot refresh token-cookien
-        body: JSON.stringify({ email, password }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error("Fel e-post eller lösenord.");
-    }
-
-    const data = await response.json();
-    if (!data.accessToken) {
-      throw new Error("Inloggningen gav ingen token. Försök igen.");
-    }
-
-    setAuth(data.accessToken, email);
-    navigate("/");
-  }
+  const post = (path: string) =>
+    fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,29 +51,29 @@ export function Login() {
     setLoading(true);
 
     try {
+      // Register ger ingen token — den skapar bara kontot, så vi
+      // loggar in direkt efteråt med samma uppgifter
       if (mode === "register") {
-        // Register ger INGEN token — den skapar bara kontot.
-        // Därför loggar vi in direkt efteråt.
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/auth/register`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          setError(extractErrorMessage(errorData));
-          setLoading(false);
-          return;
-        }
+        const registered = await post("/api/auth/register");
+        if (!registered.ok) throw new Error(readError(await registered.json()));
       }
 
-      await login();
+      const response = await post("/api/auth/login");
+      if (!response.ok) throw new Error("Fel e-post eller lösenord.");
+
+      const { accessToken } = await response.json();
+      if (!accessToken) {
+        throw new Error("Inloggningen gav ingen token. Försök igen.");
+      }
+
+      setAuth(accessToken, email);
+      navigate("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nätverksfel. Kontrollera anslutningen.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Nätverksfel. Kontrollera anslutningen."
+      );
       setLoading(false);
     }
   }
@@ -85,74 +83,57 @@ export function Login() {
       <div className="w-full max-w-[480px] bg-[var(--color-surface)] rounded-[var(--radius-card)] p-8">
         <h1 className="text-xl font-black text-white mb-6">Budgex</h1>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-[var(--color-border)]">
-          <button
-            onClick={() => setMode("login")}
-            className={`flex-1 py-2 font-semibold transition ${
-              mode === "login"
-                ? "text-[var(--color-mint)] border-b-2 border-[var(--color-mint)]"
-                : "text-[var(--color-text-muted)]"
-            }`}
-          >
-            Logga in
-          </button>
-          <button
-            onClick={() => setMode("register")}
-            className={`flex-1 py-2 font-semibold transition ${
-              mode === "register"
-                ? "text-[var(--color-mint)] border-b-2 border-[var(--color-mint)]"
-                : "text-[var(--color-text-muted)]"
-            }`}
-          >
-            Registrera
-          </button>
+          {modes.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setMode(id)}
+              className={`flex-1 py-2 font-semibold transition ${
+                mode === id
+                  ? "text-[var(--color-mint)] border-b-2 border-[var(--color-mint)]"
+                  : "text-[var(--color-text-muted)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-[var(--color-danger)] bg-opacity-20 text-[var(--color-danger)] rounded-[var(--radius-card)]">
+          <div className="mb-4 p-3 bg-[var(--color-danger-wash)] text-[var(--color-danger)] rounded-[var(--radius-card)]">
             {error}
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-[var(--color-text-muted)] mb-2">
-              E-post
-            </label>
+          <label className="block">
+            <span className={labelClasses}>E-post</span>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[var(--color-surface-2)] text-white border border-[var(--color-border)] rounded-[var(--radius-card)] px-3 py-2 focus:outline-none focus:border-[var(--color-mint)]"
+              className={inputClasses}
               required
             />
-          </div>
+          </label>
 
-          <div>
-            <label className="block text-sm text-[var(--color-text-muted)] mb-2">
-              Lösenord
-            </label>
+          <label className="block">
+            <span className={labelClasses}>Lösenord</span>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[var(--color-surface-2)] text-white border border-[var(--color-border)] rounded-[var(--radius-card)] px-3 py-2 focus:outline-none focus:border-[var(--color-mint)]"
+              className={inputClasses}
               required
             />
-          </div>
+          </label>
 
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-[var(--color-mint)] text-[var(--color-mint-dark)] font-bold py-2 rounded-[var(--radius-pill)] transition hover:opacity-90 disabled:opacity-50"
           >
-            {loading
-              ? "Laddar..."
-              : mode === "login"
-                ? "Logga in"
-                : "Registrera"}
+            {loading ? "Laddar..." : modes.find((m) => m.id === mode)?.label}
           </button>
         </form>
       </div>
