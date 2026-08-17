@@ -6,11 +6,9 @@ import {
   Dumbbell,
   Tv,
   Repeat,
-  CircleDashed,
-  Umbrella,
-  GraduationCap,
   Receipt,
   Plane,
+  CircleDashed,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,12 +20,9 @@ const categoryMap: Record<string, LucideIcon> = {
   Träning: Dumbbell,
   Streaming: Tv,
   Prenumeration: Repeat,
-  Övrigt: CircleDashed,
-  Buffert: Umbrella,
-  Studier: GraduationCap,
-  CSN: GraduationCap,
   Räkningar: Receipt,
   Resa: Plane,
+  Övrigt: CircleDashed,
 };
 
 export function getCategoryIcon(category: string) {
