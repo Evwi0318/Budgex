@@ -9,6 +9,4 @@ public sealed class RefreshToken
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime? RevokedAt { get; set; }
     public Guid? ReplacedByTokenId { get; set; }
-
-    public bool IsActive => RevokedAt is null && DateTime.UtcNow < ExpiresAt;
 }
