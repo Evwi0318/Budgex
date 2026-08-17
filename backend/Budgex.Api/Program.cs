@@ -5,6 +5,7 @@ using Budgex.Infrastructure.Identity;
 using Budgex.Infrastructure.Persistence;
 using Budgex.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -94,8 +95,20 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// Andra lagret mot lösenordsgissning: kontolåset stoppar angrepp mot ett
-// enskilt konto, det här stoppar volymen från en och samma avsändare
+// Bakom Azures ingress är RemoteIpAddress proxyns adress. Utan detta
+// hamnar alla användare i samma hink och begränsningen nedan blir
+// verkningslös — den skulle strypa alla så fort någon en gör mycket.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Containern nås bara genom ingressen, så det finns ingen väg förbi
+    // den där någon kan sätta sin egen X-Forwarded-For
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// Två lager mot lösenordsgissning: kontolåset stoppar angrepp mot ett
+// enskilt konto, takgränserna stoppar volymen från en avsändare
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -108,7 +121,20 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 PermitLimit = 60
             }));
+
+    // Taket för allt annat. Inloggade endpoints är ägarskapsfiltrerade, så
+    // det här handlar om last: ett konto ska inte kunna sänka tjänsten
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 300
+            }));
 });
+
+builder.Services.AddProblemDetails();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -121,15 +147,26 @@ builder.Services.AddScoped<GetBudgetSummary>();
 
 var app = builder.Build();
 
-app.UseCors();
-app.UseRateLimiter();
-app.UseAuthentication();
-app.UseAuthorization();
+// Först i kedjan — allt efter den ska se användarens adress och schema,
+// inte proxyns
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+else
+{
+    // Utvecklingsläget behåller sin felsida. I produktion svarar vi med
+    // ProblemDetails i stället, så ingen stacktrace kan följa med ut.
+    app.UseExceptionHandler();
+    app.UseHsts();
+}
+
+app.UseCors();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/api/health", () => new { status = "healthy" });
 app.MapAuthEndpoints();
