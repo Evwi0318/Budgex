@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroBalance } from "../components/budget/HeroBalance";
 import { ExpenseRow } from "../components/budget/ExpenseRow";
@@ -7,37 +7,21 @@ import { useMonthQuery } from "../hooks/useMonthQuery";
 import { useSummaryQuery } from "../hooks/useSummaryQuery";
 import { useDeleteExpenseMutation } from "../hooks/useExpensesMutation";
 import { getMonthName } from "../lib/format";
+import type { MonthOutletContext } from "../components/layout/AppShell";
 
 export function Home() {
-  const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth() + 1);
+  // Månadsvalet ägs av AppShell, så att plus-knappens ark alltid
+  // lägger utgiften på månaden man tittar på
+  const { year, month, goToPrevMonth, goToNextMonth } =
+    useOutletContext<MonthOutletContext>();
 
   const { data: budget, isLoading: budgetLoading } = useMonthQuery(year, month);
   // Summaryn hämtas först när vi vet månadens id — useSummaryQuery
   // står stilla så länge den får en tom sträng
   const { data: summary, isLoading: summaryLoading } = useSummaryQuery(
-    budget?.id ?? "",
+    budget?.id ?? ""
   );
   const deleteExpense = useDeleteExpenseMutation();
-
-  const goToPrevMonth = () => {
-    if (month === 1) {
-      setYear(year - 1);
-      setMonth(12);
-    } else {
-      setMonth(month - 1);
-    }
-  };
-
-  const goToNextMonth = () => {
-    if (month === 12) {
-      setYear(year + 1);
-      setMonth(1);
-    } else {
-      setMonth(month + 1);
-    }
-  };
 
   if (budgetLoading || summaryLoading) {
     return (

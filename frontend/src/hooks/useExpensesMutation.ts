@@ -24,8 +24,10 @@ export function useAddExpenseMutation(monthId: string) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["month", monthId] });
-      queryClient.invalidateQueries({ queryKey: ["summary", monthId] });
+      // Prefixmatchning: ["month"] träffar ["month", year, month].
+      // ["month", monthId] matchade aldrig — id:t är inte del av nyckeln.
+      queryClient.invalidateQueries({ queryKey: ["month"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
     },
   });
 }
@@ -45,7 +47,7 @@ export function useDeleteExpenseMutation() {
       if (!response.ok) {
         throw new Error("Failed to delete expense");
       }
-      return response.json();
+      // DELETE svarar 204 No Content — tom kropp, så .json() skulle kasta
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["month"] });

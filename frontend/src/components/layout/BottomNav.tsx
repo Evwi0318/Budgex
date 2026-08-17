@@ -9,46 +9,66 @@ interface NavItem {
   disabled?: boolean;
 }
 
+// Statistik är post-MVP och renderas dimmad utan funktion
 const navItems: NavItem[] = [
   { path: "/", icon: Hexagon, label: "Hem" },
-  { path: "/add", icon: Plus, label: "Lägg till", disabled: true },
   { path: "/stats", icon: BarChart3, label: "Statistik", disabled: true },
   { path: "/savings", icon: Target, label: "Sparande" },
-  { path: "/profile", icon: User, label: "Profil", disabled: true },
+  { path: "/profile", icon: User, label: "Profil" },
 ];
 
-export function BottomNav() {
+interface BottomNavProps {
+  onAdd: () => void;
+}
+
+export function BottomNav({ onAdd }: BottomNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Plus-knappen renderas mellan Hem och Statistik, som i mockupen
+  const [homeItem, ...restItems] = navItems;
+
+  const renderNavButton = (item: NavItem) => {
+    const Icon = item.icon;
+    const isActive = location.pathname === item.path;
+
+    return (
+      <button
+        key={item.path}
+        onClick={() => !item.disabled && navigate(item.path)}
+        disabled={item.disabled}
+        className={`flex items-center justify-center w-12 h-12 transition ${
+          item.disabled
+            ? "cursor-not-allowed opacity-40 text-[var(--color-text-faint)]"
+            : isActive
+              ? "text-[var(--color-mint)]"
+              : "text-[var(--color-text-faint)] hover:text-[var(--color-text)]"
+        }`}
+        aria-label={item.label}
+        aria-current={isActive ? "page" : undefined}
+      >
+        <Icon size={24} strokeWidth={1.5} />
+      </button>
+    );
+  };
+
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 h-16 bg-[var(--color-surface)] rounded-t-[var(--radius-hero)] border-t border-[var(--color-border)] flex items-center justify-around mx-2 mb-2"
+    <nav
+      className="fixed bottom-0 left-0 right-0 mx-auto max-w-[480px] h-16 bg-[var(--color-surface)] rounded-t-[var(--radius-hero)] flex items-center justify-around px-2"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {navItems.map((item) => {
-        const Icon = item.icon;
-        const isActive = location.pathname === item.path;
-        const isDisabled = item.disabled;
+      {renderNavButton(homeItem)}
 
-        return (
-          <button
-            key={item.path}
-            onClick={() => !isDisabled && navigate(item.path)}
-            disabled={isDisabled}
-            className={`flex items-center justify-center w-12 h-12 rounded-full transition ${
-              isDisabled
-                ? "cursor-not-allowed opacity-50"
-                : isActive
-                  ? "text-[var(--color-mint)]"
-                  : "text-[var(--color-text-faint)] hover:text-[var(--color-text)]"
-            }`}
-            aria-label={item.label}
-          >
-            <Icon size={24} strokeWidth={1.5} />
-          </button>
-        );
-      })}
-    </div>
+      {/* Plus är en handling, inte en rutt — den öppnar lägg till-arket */}
+      <button
+        onClick={onAdd}
+        className="flex items-center justify-center w-12 h-12 text-[var(--color-text-faint)] hover:text-[var(--color-mint)] transition active:scale-[0.98]"
+        aria-label="Lägg till"
+      >
+        <Plus size={24} strokeWidth={1.5} />
+      </button>
+
+      {restItems.map(renderNavButton)}
+    </nav>
   );
 }
