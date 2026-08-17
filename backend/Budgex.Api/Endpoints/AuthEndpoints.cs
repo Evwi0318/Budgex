@@ -180,21 +180,21 @@ public static class AuthEndpoints
         });
     }
 
-   private static void SetRefreshTokenCookie(HttpContext httpContext, string token, DateTime expiresAt)
-{
-    var isDevelopment = httpContext.RequestServices
-        .GetRequiredService<IWebHostEnvironment>()
-        .IsDevelopment();
-
-    httpContext.Response.Cookies.Append(RefreshTokenCookieName, token, new CookieOptions
+    private static void SetRefreshTokenCookie(HttpContext httpContext, string token, DateTime expiresAt)
     {
-        HttpOnly = true,
-        Secure = !isDevelopment,
-        SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.None,
-        Expires = expiresAt,
-        Path = "/api/auth"
-    });
-}
+        var isDevelopment = httpContext.RequestServices
+            .GetRequiredService<IWebHostEnvironment>()
+            .IsDevelopment();
+
+        httpContext.Response.Cookies.Append(RefreshTokenCookieName, token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !isDevelopment,
+            SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.None,
+            Expires = expiresAt,
+            Path = "/api/auth"
+        });
+    }
 
     private static void ClearRefreshTokenCookie(HttpContext httpContext)
     {
