@@ -50,10 +50,20 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
     }
 
     public HttpClient CreateClientWithCookies()
-{
-    return CreateClient(new WebApplicationFactoryClientOptions
     {
-        HandleCookies = true
-    });
-}
+        return CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+    }
+
+    // För tester som behöver skicka en bestämd cookie i stället för den
+    // senast mottagna — annars går kapplöpningen inte att återskapa
+    public HttpClient CreateClientWithoutCookies()
+    {
+        return CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = false
+        });
+    }
 }
