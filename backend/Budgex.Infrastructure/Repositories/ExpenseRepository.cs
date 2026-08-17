@@ -7,10 +7,12 @@ namespace Budgex.Infrastructure.Repositories;
 
 public sealed class ExpenseRepository(BudgexDbContext db) : IExpenseRepository
 {
+    // Ägarskapet verifieras via månaden — utan detta kan en inloggad
+    // användare radera andras utgifter genom att gissa id:n
     public Task<Expense?> GetByIdAsync(Guid id, Guid userId) =>
-        db.Expenses
-            .Include(e => e.BudgetMonthId)
-            .FirstOrDefaultAsync(e => e.Id == id);
+        db.Expenses.FirstOrDefaultAsync(e =>
+            e.Id == id &&
+            db.BudgetMonths.Any(bm => bm.Id == e.BudgetMonthId && bm.UserId == userId));
 
     public async Task AddAsync(Expense expense) =>
         await db.Expenses.AddAsync(expense);
