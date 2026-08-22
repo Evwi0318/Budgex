@@ -1,8 +1,10 @@
+using Budgex.Domain.Common;
 using Budgex.Domain.Entities;
 using Budgex.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Budgex.Infrastructure.Persistence;
 
@@ -14,12 +16,18 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
     public DbSet<IncomeSource> IncomeSources => Set<IncomeSource>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<SavingsAccount> SavingsAccounts => Set<SavingsAccount>();
+    public DbSet<Entry> Entries => Set<Entry>();
+    public DbSet<EntryMonthState> EntryMonthStates => Set<EntryMonthState>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        var monthKey = new ValueConverter<MonthKey, string>(
+            key => key.ToString(),
+            value => MonthKey.Parse(value));
 
         // Domänen sätter alltid sina egna Id:n (Guid.NewGuid() i entiteterna).
         // Utan detta tror EF att nycklarna är databas-genererade, och en ny
@@ -54,6 +62,10 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
              .WithOne()
              .HasForeignKey(sa => sa.BudgetMonthId)
              .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(bm => bm.EntryMonthStates)
+             .WithOne()
+             .HasForeignKey(s => s.BudgetMonthId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<IncomeSource>(e =>
@@ -76,6 +88,35 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
             e.HasKey(sa => sa.Id);
             e.Property(sa => sa.Id).ValueGeneratedNever();
             e.Property(sa => sa.RuleValue).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<Entry>(e =>
+        {
+            e.HasKey(entry => entry.Id);
+            e.Property(entry => entry.Id).ValueGeneratedNever();
+            e.Property(entry => entry.Name).HasMaxLength(40);
+            e.Property(entry => entry.Amount).HasPrecision(18, 2);
+            e.Property(entry => entry.Kind).HasConversion<string>().HasMaxLength(16);
+            e.Property(entry => entry.Category).HasConversion<string>().HasMaxLength(32);
+            e.Property(entry => entry.From).HasConversion(monthKey).HasMaxLength(7);
+            e.Property(entry => entry.To).HasConversion(monthKey).HasMaxLength(7);
+            e.HasIndex(entry => entry.UserId);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(entry => entry.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EntryMonthState>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.Property(s => s.Id).ValueGeneratedNever();
+            e.Property(s => s.Amount).HasPrecision(18, 2);
+            e.HasIndex(s => new { s.BudgetMonthId, s.EntryId }).IsUnique();
+            e.HasOne<Entry>()
+             .WithMany()
+             .HasForeignKey(s => s.EntryId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<RefreshToken>(e =>
