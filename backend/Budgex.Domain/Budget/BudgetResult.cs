@@ -1,8 +1,7 @@
 namespace Budgex.Domain.Budget;
 
 public sealed record BudgetResult(
-    decimal DisposableIncome,
+    decimal Income,
     decimal TotalSavings,
-    decimal SafeToSpend,
-    decimal TransferToBank
+    decimal SafeToSpend
 );

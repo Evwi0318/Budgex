@@ -53,15 +53,6 @@ public static class BudgetEndpoints
             return Results.Ok(result);
         });
 
-        group.MapGet("/months/{id}/summary", async (
-            Guid id,
-            GetBudgetSummary useCase,
-            ClaimsPrincipal user) =>
-        {
-            var result = await useCase.ExecuteAsync(id, user.GetUserId());
-            return result is null ? Results.NotFound() : Results.Ok(result);
-        });
-
         group.MapPut("/months/{id}/income", async (
             Guid id,
             IncomeRequest request,

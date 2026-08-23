@@ -13,6 +13,25 @@ public sealed class EntryEndpointTests(AuthApiFactory factory)
     private const string July = "/api/months/2026/7/entries";
 
     [Fact]
+    public async Task Plan_Summary_SubtractsExpensesFromIncome()
+    {
+        var client = await AuthenticateAsync();
+
+        await client.PostAsJsonAsync(August, new
+        {
+            kind = "Income", name = "Lön", category = "Salary",
+            amount = 22000m, isAutogiro = false, repeats = true
+        });
+        await CreateAsync(client, August, repeats: true);
+
+        var summary = (await PlanAsync(client, August)).Summary;
+
+        Assert.Equal(22000m, summary.Income);
+        Assert.Equal(7500m, summary.TotalExpenses);
+        Assert.Equal(14500m, summary.SafeToSpend);
+    }
+
+    [Fact]
     public async Task Create_RecurringExpense_ShowsUpInLaterMonths()
     {
         var client = await AuthenticateAsync();
@@ -194,6 +213,8 @@ public sealed class EntryEndpointTests(AuthApiFactory factory)
     private sealed record TokenDto(string AccessToken, DateTime RefreshTokenExpiresAt);
     private sealed record PlannedDto(Guid Id, string Kind, string Name, string Category,
         decimal Amount, bool IsAutogiro, bool IsPaid, bool Repeats);
+    private sealed record SummaryDto(decimal Income, decimal TotalExpenses,
+        decimal TotalSavings, decimal SafeToSpend);
     private sealed record MonthPlan(int Year, int Month,
-        List<PlannedDto> Income, List<PlannedDto> Expenses);
+        List<PlannedDto> Income, List<PlannedDto> Expenses, SummaryDto Summary);
 }

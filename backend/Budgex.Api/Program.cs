@@ -144,7 +144,6 @@ builder.Services.AddScoped<ISavingsAccountRepository, SavingsAccountRepository>(
 builder.Services.AddScoped<IEntryRepository, EntryRepository>();
 
 builder.Services.AddScoped<GetOrCreateBudgetMonth>();
-builder.Services.AddScoped<GetBudgetSummary>();
 builder.Services.AddScoped<GetMonthPlan>();
 
 var app = builder.Build();
