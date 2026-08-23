@@ -23,7 +23,7 @@ function readError(body: unknown): string {
 }
 
 const inputClasses =
-  "w-full bg-[var(--color-surface-2)] text-white border border-[var(--color-border)] rounded-[var(--radius-card)] px-3 py-2 focus:outline-none focus:border-[var(--color-mint)]";
+  "w-full bg-[var(--color-surface-2)] text-[var(--color-text)] border border-[var(--color-border)] rounded-[var(--radius-card)] px-3 py-2 focus:outline-none focus:border-[var(--color-mint)]";
 
 const labelClasses = "block text-sm text-[var(--color-text-muted)] mb-2";
 
@@ -81,7 +81,7 @@ export function Login() {
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
       <div className="w-full max-w-[480px] bg-[var(--color-surface)] rounded-[var(--radius-card)] p-8">
-        <h1 className="text-xl font-black text-white mb-6">Budgex</h1>
+        <h1 className="text-xl font-black text-[var(--color-text)] mb-6">Budgex</h1>
 
         <div className="flex gap-2 mb-6 border-b border-[var(--color-border)]">
           {modes.map(({ id, label }) => (
@@ -131,7 +131,7 @@ export function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[var(--color-mint)] text-[var(--color-mint-dark)] font-bold py-2 rounded-[var(--radius-pill)] transition hover:opacity-90 disabled:opacity-50"
+            className="w-full bg-[var(--color-mint)] text-[var(--color-on-mint)] font-bold py-2 rounded-[var(--radius-pill)] transition hover:opacity-90 disabled:opacity-50"
           >
             {loading ? "Laddar..." : modes.find((m) => m.id === mode)?.label}
           </button>

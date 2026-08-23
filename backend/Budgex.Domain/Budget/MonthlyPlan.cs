@@ -12,7 +12,10 @@ public static class MonthlyPlan
         IEnumerable<Entry> entries,
         IEnumerable<EntryMonthState> states)
     {
-        var stateByEntry = states.ToDictionary(state => state.EntryId);
+        var stateByEntry = states
+            .Where(state => state.Month == month)
+            .ToDictionary(state => state.EntryId);
+
         var planned = new List<PlannedEntry>();
 
         foreach (var entry in entries.Where(entry => entry.LiveIn(month)))

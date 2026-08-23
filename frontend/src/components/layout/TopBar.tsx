@@ -5,7 +5,7 @@ export function TopBar() {
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       {/* Wordmark */}
-      <h1 className="text-xl font-black text-white">Budgex</h1>
+      <h1 className="text-xl font-black text-[var(--color-text)]">Budgex</h1>
 
       {/* Post-MVP: streak och PRO-knapp gömda */}
       <div className="w-8" />

@@ -50,30 +50,31 @@ public class MonthlyPlanTests
     }
 
     [Fact]
-    public void For_Override_AppliesOnlyToThatMonth()
+    public void For_Override_AppliesOnlyToItsOwnMonth()
     {
         var rent = Template("Hyra", 7500m, from: January);
-        var raised = new EntryMonthState { EntryId = rent.Id, Amount = 8200m };
+        var raised = new EntryMonthState { EntryId = rent.Id, Month = August, Amount = 8200m };
 
+        // Samma avvikelse skickas in för båda månaderna — bara augusti ska bry sig
         Assert.Equal(8200m, Assert.Single(MonthlyPlan.For(August, [rent], [raised])).Amount);
-        Assert.Equal(7500m, Assert.Single(MonthlyPlan.For(September, [rent], [])).Amount);
+        Assert.Equal(7500m, Assert.Single(MonthlyPlan.For(September, [rent], [raised])).Amount);
     }
 
     [Fact]
-    public void For_Skip_RemovesTheEntryThatMonth()
+    public void For_Skip_RemovesTheEntryOnlyInItsOwnMonth()
     {
         var rent = Template("Hyra", 7500m, from: January);
-        var skipped = new EntryMonthState { EntryId = rent.Id, IsSkipped = true };
+        var skipped = new EntryMonthState { EntryId = rent.Id, Month = August, IsSkipped = true };
 
         Assert.Empty(MonthlyPlan.For(August, [rent], [skipped]));
-        Assert.Single(MonthlyPlan.For(September, [rent], []));
+        Assert.Single(MonthlyPlan.For(September, [rent], [skipped]));
     }
 
     [Fact]
     public void For_Paid_DoesNotChangeTheAmount()
     {
         var rent = Template("Hyra", 7500m, from: January);
-        var paid = new EntryMonthState { EntryId = rent.Id, IsPaid = true };
+        var paid = new EntryMonthState { EntryId = rent.Id, Month = August, IsPaid = true };
 
         var planned = Assert.Single(MonthlyPlan.For(August, [rent], [paid]));
 
@@ -106,7 +107,7 @@ public class MonthlyPlanTests
     {
         var food = Template("Mat", 3600m, from: January, createdMinute: 0);
         var gym = Template("Gym", 399m, from: January, createdMinute: 1);
-        var paid = new EntryMonthState { EntryId = food.Id, IsPaid = true };
+        var paid = new EntryMonthState { EntryId = food.Id, Month = August, IsPaid = true };
 
         var planned = MonthlyPlan.For(August, [food, gym], [paid]);
 

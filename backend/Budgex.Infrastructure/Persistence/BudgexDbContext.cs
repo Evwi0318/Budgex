@@ -62,10 +62,6 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
              .WithOne()
              .HasForeignKey(sa => sa.BudgetMonthId)
              .OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(bm => bm.EntryMonthStates)
-             .WithOne()
-             .HasForeignKey(s => s.BudgetMonthId)
-             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<IncomeSource>(e =>
@@ -112,7 +108,8 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
             e.HasKey(s => s.Id);
             e.Property(s => s.Id).ValueGeneratedNever();
             e.Property(s => s.Amount).HasPrecision(18, 2);
-            e.HasIndex(s => new { s.BudgetMonthId, s.EntryId }).IsUnique();
+            e.Property(s => s.Month).HasConversion(monthKey).HasMaxLength(7);
+            e.HasIndex(s => new { s.EntryId, s.Month }).IsUnique();
             e.HasOne<Entry>()
              .WithMany()
              .HasForeignKey(s => s.EntryId)

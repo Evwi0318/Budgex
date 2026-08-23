@@ -63,24 +63,6 @@ public sealed class IncomeEndpointTests(AuthApiFactory factory)
         Assert.Equal(15000m, updated.IncomeSources[0].Amount);
     }
 
-    [Fact]
-    public async Task Summary_AfterIncome_ExcludesCsnLoanFromSafeToSpend()
-    {
-        var client = await CreateAuthenticatedClientAsync();
-        var month = await client.GetFromJsonAsync<BudgetMonthDto>("/api/months/2026/10");
-
-        await client.PutAsJsonAsync(
-            $"/api/months/{month!.Id}/income",
-            new { salary = 20000m, csnAmount = 12000m, csnLoanPart = 8000m });
-
-        var summary = await client.GetFromJsonAsync<SummaryDto>(
-            $"/api/months/{month.Id}/summary");
-
-        // 20 000 lön + 4 000 CSN-bidrag. Lånet på 8 000 är aldrig spenderbart.
-        Assert.Equal(24000m, summary!.DisposableIncome);
-        Assert.Equal(24000m, summary.SafeToSpend);
-    }
-
     private sealed record TokenDto(string AccessToken, DateTime RefreshTokenExpiresAt);
 
     private sealed record IncomeSourceDto(Guid Id, string Type, decimal Amount, decimal? LoanAmount);
@@ -90,11 +72,4 @@ public sealed class IncomeEndpointTests(AuthApiFactory factory)
         int Year,
         int Month,
         List<IncomeSourceDto> IncomeSources);
-
-    private sealed record SummaryDto(
-        decimal DisposableIncome,
-        decimal TotalExpenses,
-        decimal TotalSavings,
-        decimal SafeToSpend,
-        decimal TransferToBank);
 }

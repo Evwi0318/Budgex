@@ -19,7 +19,7 @@ export function MonthNav({ year, month, onPrev, onNext }: MonthNavProps) {
         <ChevronLeft size={20} />
       </button>
 
-      <span className="text-base font-black text-white min-w-[140px] text-center">
+      <span className="text-base font-black text-[var(--color-text)] min-w-[140px] text-center">
         {formatMonthYear(month, year)}
       </span>
 
