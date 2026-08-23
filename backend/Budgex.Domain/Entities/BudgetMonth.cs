@@ -9,5 +9,4 @@ public sealed class BudgetMonth
     public List<IncomeSource> IncomeSources { get; init; } = [];
     public List<Expense> Expenses { get; init; } = [];
     public List<SavingsAccount> SavingsAccounts { get; init; } = [];
-    public List<EntryMonthState> EntryMonthStates { get; init; } = [];
 }
