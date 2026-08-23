@@ -1,9 +1,8 @@
 namespace Budgex.Application.DTOs;
 
 public sealed record SummaryDto(
-    decimal DisposableIncome,
+    decimal Income,
     decimal TotalExpenses,
     decimal TotalSavings,
-    decimal SafeToSpend,
-    decimal TransferToBank
+    decimal SafeToSpend
 );

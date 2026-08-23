@@ -15,5 +15,6 @@ public sealed record MonthPlanDto(
     int Year,
     int Month,
     List<EntryDto> Income,
-    List<EntryDto> Expenses
+    List<EntryDto> Expenses,
+    SummaryDto Summary
 );
