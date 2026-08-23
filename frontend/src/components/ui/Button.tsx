@@ -8,7 +8,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses = {
   primary:
-    "bg-[var(--color-mint)] text-[var(--color-mint-dark)] font-bold hover:opacity-90 active:scale-[0.98]",
+    "bg-[var(--color-mint)] text-[var(--color-on-mint)] font-bold hover:opacity-90 active:scale-[0.98]",
   ghost:
     "bg-transparent text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--color-surface-2)] active:scale-[0.98]",
   danger:
