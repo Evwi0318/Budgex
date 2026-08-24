@@ -19,6 +19,7 @@ export interface MonthOutletContext {
   setView: (kind: EntryKind) => void;
   goToPrevMonth: () => void;
   goToNextMonth: () => void;
+  openAdd: () => void;
 }
 
 export function AppShell() {
@@ -41,6 +42,7 @@ export function AppShell() {
     setView,
     goToPrevMonth: () => step(-1),
     goToNextMonth: () => step(1),
+    openAdd: () => setAddSheetOpen(true),
   };
 
   return (
@@ -52,7 +54,7 @@ export function AppShell() {
           <Outlet context={outletContext} />
         </main>
 
-        <BottomNav onAdd={() => setAddSheetOpen(true)} />
+        <BottomNav />
       </div>
 
       <BottomSheet open={addSheetOpen} onClose={() => setAddSheetOpen(false)}>

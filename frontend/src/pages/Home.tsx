@@ -11,8 +11,15 @@ import type { MonthOutletContext } from "../components/layout/AppShell";
 import type { MonthPlan } from "../hooks/useMonthPlanQuery";
 
 export function Home() {
-  const { year, month, view, setView, goToPrevMonth, goToNextMonth } =
-    useOutletContext<MonthOutletContext>();
+  const {
+    year,
+    month,
+    view,
+    setView,
+    goToPrevMonth,
+    goToNextMonth,
+    openAdd,
+  } = useOutletContext<MonthOutletContext>();
   const navigate = useNavigate();
 
   const { data: plan, isLoading } = useMonthPlanQuery(year, month);
@@ -72,18 +79,33 @@ export function Home() {
             {entries.length}
           </span>
 
-          {isClosed && (
-            <button
-              onClick={isLocked ? unlock : relock}
-              className={`ml-auto rounded-full border px-2.5 py-1.5 text-[12.5px] font-extrabold transition active:scale-95 ${
-                isLocked
-                  ? "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]"
-                  : "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
-              }`}
-            >
-              {isLocked ? "🔒 Avslutad — lås upp" : "🔓 Upplåst — lås igen"}
-            </button>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {isClosed && (
+              <button
+                onClick={isLocked ? unlock : relock}
+                className={`rounded-full border px-2.5 py-1.5 text-[12.5px] font-extrabold transition active:scale-95 ${
+                  isLocked
+                    ? "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]"
+                    : "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
+                }`}
+              >
+                {isLocked ? "🔒 Avslutad — lås upp" : "🔓 Upplåst — lås igen"}
+              </button>
+            )}
+
+            {!isLocked && (
+              <button
+                onClick={openAdd}
+                className={`rounded-full px-3 py-1.5 text-[12.5px] font-extrabold transition active:scale-95 ${
+                  view === "Income"
+                    ? "bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
+                    : "bg-[var(--color-danger-wash)] text-[var(--color-danger)]"
+                }`}
+              >
+                + {view === "Income" ? "Inkomst" : "Utgift"}
+              </button>
+            )}
+          </div>
         </header>
 
         {entries.length > 0 ? (
@@ -124,7 +146,7 @@ function Empty({ plan, view, monthName, closed }: EmptyProps) {
         emoji="👋"
         title="Välkommen till Budgex"
         body="Börja med din inkomst — då vet appen hur mycket du har att röra dig med. Utgifterna lägger du till efteråt."
-        footnote="Tryck på plus i menyn för att lägga till."
+        footnote="Tryck på + till höger om rubriken för att lägga till."
       />
     );
   }
