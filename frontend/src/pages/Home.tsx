@@ -6,11 +6,16 @@ import { EntryRow } from "../components/home/EntryRow";
 import { EmptyState } from "../components/home/EmptyState";
 import { EditEntryForm } from "../components/home/EditEntryForm";
 import { BottomSheet } from "../components/ui/BottomSheet";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
-import { useSetPaidMutation } from "../hooks/useEntryMutation";
+import {
+  useDeleteEntryMutation,
+  useSetPaidMutation,
+} from "../hooks/useEntryMutation";
 import { getMonthName } from "../lib/format";
 import { isPast } from "../lib/month";
+import type { EntryScope } from "../hooks/useEntryMutation";
 import type { MonthOutletContext } from "../components/layout/AppShell";
 import type { MonthPlan, PlannedEntry } from "../hooks/useMonthPlanQuery";
 
@@ -29,7 +34,40 @@ export function Home() {
   const { data: plan, isLoading } = useMonthPlanQuery(year, month);
   const { isClosed, isLocked, unlock, relock } = useMonthLock(year, month);
   const setPaid = useSetPaidMutation(year, month);
+  const deleteEntry = useDeleteEntryMutation(year, month);
+
   const [editing, setEditing] = useState<PlannedEntry | null>(null);
+  const [editDirty, setEditDirty] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const [removing, setRemoving] = useState<PlannedEntry | null>(null);
+
+  const closeEdit = () => {
+    setEditing(null);
+    setEditDirty(false);
+    setDiscarding(false);
+  };
+
+  const requestCloseEdit = () => (editDirty ? setDiscarding(true) : closeEdit());
+
+  const requestRemove = (entry: PlannedEntry) => {
+    closeEdit();
+
+    if (entry.repeats) {
+      setRemoving(entry);
+      return;
+    }
+
+    deleteEntry.mutate({ id: entry.id, scope: "Onwards" });
+  };
+
+  const confirmRemove = (scope: EntryScope) => {
+    if (!removing) return;
+
+    deleteEntry.mutate(
+      { id: removing.id, scope },
+      { onSuccess: () => setRemoving(null) }
+    );
+  };
 
   if (isLoading) {
     return (
@@ -50,6 +88,7 @@ export function Home() {
 
   const monthName = getMonthName(month);
   const entries = view === "Income" ? plan.income : plan.expenses;
+  const removingNoun = removing?.kind === "Income" ? "Inkomsten" : "Utgiften";
 
   return (
     <div>
@@ -120,9 +159,11 @@ export function Home() {
               key={entry.id}
               entry={entry}
               monthName={monthName}
-              onEdit={() => !isLocked && setEditing(entry)}
+              locked={isLocked}
+              onOpen={() => !isLocked && setEditing(entry)}
+              onDelete={() => requestRemove(entry)}
               onTogglePaid={() =>
-                !isLocked && setPaid.mutate({ id: entry.id, isPaid: !entry.isPaid })
+                setPaid.mutate({ id: entry.id, isPaid: !entry.isPaid })
               }
             />
           ))
@@ -131,16 +172,43 @@ export function Home() {
         )}
       </div>
 
-      <BottomSheet open={editing !== null} onClose={() => setEditing(null)}>
+      <BottomSheet open={editing !== null} onClose={requestCloseEdit}>
         {editing && (
           <EditEntryForm
             year={year}
             month={month}
             entry={editing}
-            onSaved={() => setEditing(null)}
+            onSaved={closeEdit}
+            onRemove={() => requestRemove(editing)}
+            onDirtyChange={setEditDirty}
           />
         )}
       </BottomSheet>
+
+      <ConfirmDialog
+        open={discarding}
+        title="Kasta ändringarna?"
+        body={`Ändringarna av ${editing?.name ?? ""} sparas inte.`}
+        actions={[
+          { label: "Kasta", tone: "danger" },
+          { label: "Fortsätt skriva", tone: "alt" },
+        ]}
+        onPick={(index) => (index === 0 ? closeEdit() : setDiscarding(false))}
+        onCancel={() => setDiscarding(false)}
+      />
+
+      <ConfirmDialog
+        open={removing !== null}
+        title={`Ta bort ${removing?.name ?? ""}?`}
+        body={`${removingNoun} återkommer varje månad.`}
+        actions={[
+          { label: `Bara ${monthName} ${year}` },
+          { label: "Den här och kommande månader", tone: "alt" },
+        ]}
+        cancelLabel="Avbryt"
+        onPick={(index) => confirmRemove(index === 0 ? "Month" : "Onwards")}
+        onCancel={() => setRemoving(null)}
+      />
     </div>
   );
 }

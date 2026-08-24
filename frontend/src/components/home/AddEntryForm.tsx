@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../ui/Button";
 import { NumberField } from "../ui/NumberField";
 import { categoriesFor } from "../../lib/categories";
@@ -11,9 +11,16 @@ interface AddEntryFormProps {
   month: number;
   kind: EntryKind;
   onSaved: () => void;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
-export function AddEntryForm({ year, month, kind, onSaved }: AddEntryFormProps) {
+export function AddEntryForm({
+  year,
+  month,
+  kind,
+  onSaved,
+  onDirtyChange,
+}: AddEntryFormProps) {
   const categories = categoriesFor(kind);
 
   const [name, setName] = useState("");
@@ -24,6 +31,9 @@ export function AddEntryForm({ year, month, kind, onSaved }: AddEntryFormProps) 
 
   const addEntry = useAddEntryMutation(year, month);
   const canSave = name.trim().length > 0 && amount > 0;
+  const dirty = name.trim().length > 0 || amount > 0;
+
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
