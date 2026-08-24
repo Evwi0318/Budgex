@@ -1,14 +1,18 @@
+import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroCard } from "../components/home/HeroCard";
 import { EntryRow } from "../components/home/EntryRow";
 import { EmptyState } from "../components/home/EmptyState";
+import { EditEntryForm } from "../components/home/EditEntryForm";
+import { BottomSheet } from "../components/ui/BottomSheet";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
+import { useSetPaidMutation } from "../hooks/useEntryMutation";
 import { getMonthName } from "../lib/format";
 import { isPast } from "../lib/month";
 import type { MonthOutletContext } from "../components/layout/AppShell";
-import type { MonthPlan } from "../hooks/useMonthPlanQuery";
+import type { MonthPlan, PlannedEntry } from "../hooks/useMonthPlanQuery";
 
 export function Home() {
   const {
@@ -24,6 +28,8 @@ export function Home() {
 
   const { data: plan, isLoading } = useMonthPlanQuery(year, month);
   const { isClosed, isLocked, unlock, relock } = useMonthLock(year, month);
+  const setPaid = useSetPaidMutation(year, month);
+  const [editing, setEditing] = useState<PlannedEntry | null>(null);
 
   if (isLoading) {
     return (
@@ -110,12 +116,31 @@ export function Home() {
 
         {entries.length > 0 ? (
           entries.map((entry) => (
-            <EntryRow key={entry.id} entry={entry} monthName={monthName} />
+            <EntryRow
+              key={entry.id}
+              entry={entry}
+              monthName={monthName}
+              onEdit={() => !isLocked && setEditing(entry)}
+              onTogglePaid={() =>
+                !isLocked && setPaid.mutate({ id: entry.id, isPaid: !entry.isPaid })
+              }
+            />
           ))
         ) : (
           <Empty plan={plan} view={view} monthName={monthName} closed={isClosed} />
         )}
       </div>
+
+      <BottomSheet open={editing !== null} onClose={() => setEditing(null)}>
+        {editing && (
+          <EditEntryForm
+            year={year}
+            month={month}
+            entry={editing}
+            onSaved={() => setEditing(null)}
+          />
+        )}
+      </BottomSheet>
     </div>
   );
 }

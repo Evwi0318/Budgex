@@ -115,7 +115,7 @@ export function AddEntryForm({ year, month, kind, onSaved }: AddEntryFormProps) 
   );
 }
 
-const Label = ({ children }: { children: string }) => (
+export const Label = ({ children }: { children: string }) => (
   <span className="mb-2 block text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
     {children}
   </span>
@@ -127,7 +127,7 @@ interface SegmentedProps {
   onSelect: (index: number) => void;
 }
 
-function Segmented({ options, selected, onSelect }: SegmentedProps) {
+export function Segmented({ options, selected, onSelect }: SegmentedProps) {
   return (
     <div className="flex gap-1 rounded-2xl bg-[var(--color-surface-2)] p-1">
       {options.map((option, index) => (
