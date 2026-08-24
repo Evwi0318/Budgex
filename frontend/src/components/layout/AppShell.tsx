@@ -3,60 +3,49 @@ import { Outlet } from "react-router-dom";
 import { TopBar } from "./TopBar";
 import { BottomNav } from "./BottomNav";
 import { BottomSheet } from "../ui/BottomSheet";
-import { AddExpenseForm } from "../budget/AddExpenseForm";
-import { useMonthQuery } from "../../hooks/useMonthQuery";
+import { AddEntryForm } from "../home/AddEntryForm";
+import { currentMonth } from "../../lib/month";
+import type { EntryKind } from "../../lib/categories";
 
 /**
- * Månadsvalet bor här och inte i Home, eftersom både sidorna (via
- * Outlet context) och lägg till-arket behöver veta vilken månad
- * som är vald. Plus-knappen i navigeringen ska alltid lägga utgiften
- * på månaden man tittar på.
+ * Månadsvalet och vald flik bor här och inte i Home. Månaden behövs av både
+ * sidorna och lägg till-arket. Fliken måste överleva att Home monteras ur,
+ * eftersom §8 kräver att den kommer ihåg sig efter ett besök på Sparande.
  */
 export interface MonthOutletContext {
   year: number;
   month: number;
+  view: EntryKind;
+  setView: (kind: EntryKind) => void;
   goToPrevMonth: () => void;
   goToNextMonth: () => void;
 }
 
 export function AppShell() {
-  const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth() + 1);
+  const [{ year, month }, setMonth] = useState(currentMonth);
+  const [view, setView] = useState<EntryKind>("Expense");
   const [addSheetOpen, setAddSheetOpen] = useState(false);
 
-  // Samma query-nyckel som Home använder — React Query slår ihop dem
-  // till en enda hämtning, så det här kostar ingen extra request
-  const { data: budget } = useMonthQuery(year, month);
-
-  const goToPrevMonth = () => {
-    if (month === 1) {
-      setYear(year - 1);
-      setMonth(12);
-    } else {
-      setMonth(month - 1);
-    }
-  };
-
-  const goToNextMonth = () => {
-    if (month === 12) {
-      setYear(year + 1);
-      setMonth(1);
-    } else {
-      setMonth(month + 1);
-    }
+  const step = (delta: number) => {
+    const shifted = month + delta;
+    setMonth({
+      year: year + Math.floor((shifted - 1) / 12),
+      month: ((((shifted - 1) % 12) + 12) % 12) + 1,
+    });
   };
 
   const outletContext: MonthOutletContext = {
     year,
     month,
-    goToPrevMonth,
-    goToNextMonth,
+    view,
+    setView,
+    goToPrevMonth: () => step(-1),
+    goToNextMonth: () => step(1),
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[var(--color-bg)]">
-      <div className="w-full max-w-[480px] flex flex-col h-screen bg-[var(--color-bg)]">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg)]">
+      <div className="flex h-screen w-full max-w-[420px] flex-col bg-[var(--color-bg)]">
         <TopBar />
 
         <main className="flex-1 overflow-y-auto pb-24">
@@ -67,16 +56,12 @@ export function AppShell() {
       </div>
 
       <BottomSheet open={addSheetOpen} onClose={() => setAddSheetOpen(false)}>
-        {budget ? (
-          <AddExpenseForm
-            monthId={budget.id}
-            onSaved={() => setAddSheetOpen(false)}
-          />
-        ) : (
-          <p className="text-center text-[var(--color-text-muted)] py-4">
-            Kunde inte hämta månaden. Stäng och försök igen.
-          </p>
-        )}
+        <AddEntryForm
+          year={year}
+          month={month}
+          kind={view}
+          onSaved={() => setAddSheetOpen(false)}
+        />
       </BottomSheet>
     </div>
   );
