@@ -20,11 +20,21 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(
-                  "http://localhost:5173",
-                  "https://budgex-omega.vercel.app",
-                  "https://budgex-p0e4qmp6v-wilbardevan03-1705s-projects.vercel.app")
-              .AllowAnyMethod()
+        // Vite byter port så fort 5173 är upptagen. I utvecklingsläge
+        // godtas därför vilken loopback-adress som helst; i produktion
+        // gäller bara de riktiga värdarna.
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin => new Uri(origin).IsLoopback);
+        }
+        else
+        {
+            policy.WithOrigins(
+                "https://budgex-omega.vercel.app",
+                "https://budgex-p0e4qmp6v-wilbardevan03-1705s-projects.vercel.app");
+        }
+
+        policy.AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
     });
