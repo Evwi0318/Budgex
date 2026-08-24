@@ -1,19 +1,16 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import type { ComponentType } from "react";
-import { Hexagon, BarChart3, Target, User } from "lucide-react";
+import { House, PiggyBank, User } from "lucide-react";
 
 interface NavItem {
   path: string;
   icon: ComponentType<{ size?: number; strokeWidth?: number }>;
   label: string;
-  disabled?: boolean;
 }
 
-// Statistik är post-MVP och renderas dimmad utan funktion
 const navItems: NavItem[] = [
-  { path: "/", icon: Hexagon, label: "Hem" },
-  { path: "/stats", icon: BarChart3, label: "Statistik", disabled: true },
-  { path: "/savings", icon: Target, label: "Sparande" },
+  { path: "/", icon: House, label: "Hem" },
+  { path: "/savings", icon: PiggyBank, label: "Sparande" },
   { path: "/profile", icon: User, label: "Profil" },
 ];
 
@@ -33,14 +30,11 @@ export function BottomNav() {
         return (
           <button
             key={item.path}
-            onClick={() => !item.disabled && navigate(item.path)}
-            disabled={item.disabled}
+            onClick={() => navigate(item.path)}
             className={`flex items-center justify-center w-12 h-12 transition ${
-              item.disabled
-                ? "cursor-not-allowed opacity-40 text-[var(--color-text-faint)]"
-                : isActive
-                  ? "text-[var(--color-mint)]"
-                  : "text-[var(--color-text-faint)] hover:text-[var(--color-text)]"
+              isActive
+                ? "text-[var(--color-mint)]"
+                : "text-[var(--color-text-faint)] hover:text-[var(--color-text)]"
             }`}
             aria-label={item.label}
             aria-current={isActive ? "page" : undefined}
