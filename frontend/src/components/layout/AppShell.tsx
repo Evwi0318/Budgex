@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { TopBar } from "./TopBar";
 import { BottomNav } from "./BottomNav";
 import { BottomSheet } from "../ui/BottomSheet";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { AddEntryForm } from "../home/AddEntryForm";
 import { currentMonth } from "../../lib/month";
 import type { EntryKind } from "../../lib/categories";
@@ -26,6 +27,16 @@ export function AppShell() {
   const [{ year, month }, setMonth] = useState(currentMonth);
   const [view, setView] = useState<EntryKind>("Expense");
   const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [addDirty, setAddDirty] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+
+  const closeAdd = () => {
+    setAddSheetOpen(false);
+    setAddDirty(false);
+    setDiscarding(false);
+  };
+
+  const requestCloseAdd = () => (addDirty ? setDiscarding(true) : closeAdd());
 
   const step = (delta: number) => {
     const shifted = month + delta;
@@ -57,14 +68,27 @@ export function AppShell() {
         <BottomNav />
       </div>
 
-      <BottomSheet open={addSheetOpen} onClose={() => setAddSheetOpen(false)}>
+      <BottomSheet open={addSheetOpen} onClose={requestCloseAdd}>
         <AddEntryForm
           year={year}
           month={month}
           kind={view}
-          onSaved={() => setAddSheetOpen(false)}
+          onSaved={closeAdd}
+          onDirtyChange={setAddDirty}
         />
       </BottomSheet>
+
+      <ConfirmDialog
+        open={discarding}
+        title="Kasta ändringarna?"
+        body={`Den nya ${view === "Income" ? "inkomsten" : "utgiften"} sparas inte.`}
+        actions={[
+          { label: "Kasta", tone: "danger" },
+          { label: "Fortsätt skriva", tone: "alt" },
+        ]}
+        onPick={(index) => (index === 0 ? closeAdd() : setDiscarding(false))}
+        onCancel={() => setDiscarding(false)}
+      />
     </div>
   );
 }

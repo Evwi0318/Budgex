@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { SwipeRow } from "./SwipeRow";
 import { categoryOf } from "../../lib/categories";
 import { formatKr } from "../../lib/format";
 import type { PlannedEntry } from "../../hooks/useMonthPlanQuery";
@@ -6,19 +6,23 @@ import type { PlannedEntry } from "../../hooks/useMonthPlanQuery";
 interface EntryRowProps {
   entry: PlannedEntry;
   monthName: string;
-  onEdit: () => void;
+  locked: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
   onTogglePaid: () => void;
 }
 
 export function EntryRow({
   entry,
   monthName,
-  onEdit,
+  locked,
+  onOpen,
+  onDelete,
   onTogglePaid,
 }: EntryRowProps) {
   const category = categoryOf(entry.kind, entry.category);
-  const canMarkPaid = entry.kind === "Expense" && !entry.isAutogiro;
-  const looksPaid = canMarkPaid && entry.isPaid;
+  const isExpense = entry.kind === "Expense";
+  const paid = isExpense && !entry.isAutogiro && entry.isPaid;
 
   const note = entry.isAutogiro
     ? "Autogiro · Varje månad"
@@ -27,52 +31,73 @@ export function EntryRow({
       : `Bara ${monthName}`;
 
   return (
-    <div
-      className={`mb-2 flex items-center gap-3 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-3.5 py-2.5 transition-opacity ${
-        looksPaid ? "opacity-55" : ""
-      }`}
-    >
-      <button
-        onClick={onEdit}
-        aria-label={`Ändra ${entry.name}`}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left transition active:scale-[0.99]"
-      >
+    <SwipeRow onDelete={onDelete} disabled={locked}>
+      <div className="flex items-center gap-3 bg-[var(--color-surface)] px-3.5 py-2.5">
+        {isExpense &&
+          (entry.isAutogiro ? (
+            <span
+              title="Autogiro"
+              className="grid w-[26px] shrink-0 place-items-center text-[14px] text-[var(--color-mint-dim)]"
+            >
+              ↻
+            </span>
+          ) : (
+            <button
+              onClick={onTogglePaid}
+              disabled={locked}
+              aria-pressed={entry.isPaid}
+              aria-label={
+                entry.isPaid ? "Markera som obetald" : "Markera som betald"
+              }
+              className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[9px] border-2 text-[14px] font-black transition ${
+                entry.isPaid
+                  ? "border-[var(--color-mint)] bg-[var(--color-mint)] text-[var(--color-on-mint)]"
+                  : "border-[var(--color-border)] text-transparent"
+              }`}
+            >
+              ✓
+            </button>
+          ))}
+
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--color-mint-wash)] text-[17px]">
           {category.emoji}
         </span>
 
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-bold">
+        <button
+          onClick={onOpen}
+          className="min-w-0 flex-1 text-left"
+          aria-label={`Öppna ${entry.name}`}
+        >
+          <span
+            className={`block truncate text-[15px] font-bold ${
+              paid ? "line-through decoration-[var(--color-text-faint)] opacity-50" : ""
+            }`}
+          >
             {entry.name}
           </span>
           <span className="mt-px block text-[11.5px] text-[var(--color-text-faint)]">
             {note}
           </span>
-        </span>
+        </button>
 
         <span
           className={`text-[15px] font-extrabold tabular-nums ${
             entry.kind === "Income" ? "text-[var(--color-mint)]" : ""
-          } ${looksPaid ? "line-through" : ""}`}
+          } ${paid ? "opacity-50" : ""}`}
         >
           {formatKr(entry.amount)}
         </span>
-      </button>
 
-      {canMarkPaid && (
         <button
-          onClick={onTogglePaid}
-          aria-pressed={entry.isPaid}
-          aria-label={entry.isPaid ? "Markera som obetald" : "Markera som betald"}
-          className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border transition active:scale-90 ${
-            entry.isPaid
-              ? "border-[var(--color-mint)] bg-[var(--color-mint)] text-[var(--color-on-mint)]"
-              : "border-[var(--color-border)] text-transparent"
+          onClick={onOpen}
+          aria-label="Öppna"
+          className={`shrink-0 pl-0.5 text-[17px] text-[var(--color-text-faint)] ${
+            locked ? "opacity-40" : ""
           }`}
         >
-          <Check size={14} strokeWidth={3} />
+          ›
         </button>
-      )}
-    </div>
+      </div>
+    </SwipeRow>
   );
 }
