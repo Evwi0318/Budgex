@@ -148,12 +148,9 @@ builder.Services.AddProblemDetails();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IBudgetMonthRepository, BudgetMonthRepository>();
-builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<ISavingsRepository, SavingsRepository>();
 builder.Services.AddScoped<IEntryRepository, EntryRepository>();
 
-builder.Services.AddScoped<GetOrCreateBudgetMonth>();
 builder.Services.AddScoped<GetMonthPlan>();
 builder.Services.AddScoped<GetSavingsMonth>();
 
@@ -182,7 +179,6 @@ app.UseAuthorization();
 
 app.MapGet("/api/health", () => new { status = "healthy" });
 app.MapAuthEndpoints();
-app.MapBudgetEndpoints();
 app.MapEntryEndpoints();
 app.MapSavingsEndpoints();
 
