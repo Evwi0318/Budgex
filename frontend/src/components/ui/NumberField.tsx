@@ -14,7 +14,7 @@ export function NumberField({
 }: NumberFieldProps) {
   return (
     <label className="block">
-      <span className="block text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-faint)] mb-2">
+      <span className="mb-1.5 block text-[12px] font-medium text-[var(--color-text-muted)]">
         {label}
       </span>
 

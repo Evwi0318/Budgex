@@ -111,7 +111,7 @@ export function Home() {
 
       <div className="px-4 pt-5">
         <header className="mb-2.5 flex items-center gap-2.5 px-1">
-          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+          <span className="text-[13.5px] font-bold tracking-[-0.015em] text-[var(--color-text)]">
             {view === "Income" ? "Inkomst" : "Utgifter"}
           </span>
 

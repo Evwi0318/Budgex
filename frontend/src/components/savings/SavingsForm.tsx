@@ -148,17 +148,23 @@ export function SavingsForm({
             </span>
           ) : (
             <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-              {chosen.map((income) => (
-                <span
-                  key={income.id}
-                  className="flex min-w-0 items-center gap-1.5 rounded-full bg-[var(--color-surface)] py-1 pl-2 pr-2.5 text-[12px] font-bold"
-                >
-                  <span className="shrink-0 text-[12px]">
-                    {categoryOf("Income", income.category).emoji}
+              {chosen.map((income) => {
+                const Icon = categoryOf("Income", income.category).icon;
+
+                return (
+                  <span
+                    key={income.id}
+                    className="flex min-w-0 items-center gap-1.5 rounded-full bg-[var(--color-surface)] py-1 pl-2 pr-2.5 text-[12px] font-bold"
+                  >
+                    <Icon
+                      size={13}
+                      strokeWidth={2}
+                      className="shrink-0 text-[var(--color-text-muted)]"
+                    />
+                    <span className="truncate">{income.name}</span>
                   </span>
-                  <span className="truncate">{income.name}</span>
-                </span>
-              ))}
+                );
+              })}
             </span>
           )}
           <b className="shrink-0 text-[15px] font-extrabold tabular-nums text-[var(--color-mint)]">

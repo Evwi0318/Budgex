@@ -36,7 +36,7 @@ export function SavingsRow({
 
   return (
     <div
-      className={`mb-2 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-3 transition-opacity ${
+      className={`mb-2 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 transition-opacity ${
         account.isTransferred ? "opacity-60" : ""
       }`}
     >
@@ -47,7 +47,7 @@ export function SavingsRow({
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
           aria-label={`Öppna ${account.name}`}
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--color-surface-2)] text-[19px]">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[var(--color-surface-2)] text-[17px]">
             {account.icon}
           </span>
 
