@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label } from "../home/AddEntryForm";
 import { SourcePicker } from "./SourcePicker";
+import { categoryOf } from "../../lib/categories";
 import { formatNumber } from "../../lib/format";
 import { draftAmount, goalProgress } from "../../lib/savings";
 import {
@@ -140,12 +141,26 @@ export function SavingsForm({
           onChange={setDrafts}
         />
 
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] px-3.5 py-3">
-          <span className="min-w-0 truncate text-[13px] font-bold text-[var(--color-text-muted)]">
-            {chosen.length === 0
-              ? "Ingen källa vald"
-              : chosen.map((income) => income.name).join("  ")}
-          </span>
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] px-3 py-2.5">
+          {chosen.length === 0 ? (
+            <span className="text-[13px] font-bold text-[var(--color-text-muted)]">
+              Ingen källa vald
+            </span>
+          ) : (
+            <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+              {chosen.map((income) => (
+                <span
+                  key={income.id}
+                  className="flex min-w-0 items-center gap-1.5 rounded-full bg-[var(--color-surface)] py-1 pl-2 pr-2.5 text-[12px] font-bold"
+                >
+                  <span className="shrink-0 text-[12px]">
+                    {categoryOf("Income", income.category).emoji}
+                  </span>
+                  <span className="truncate">{income.name}</span>
+                </span>
+              ))}
+            </span>
+          )}
           <b className="shrink-0 text-[15px] font-extrabold tabular-nums text-[var(--color-mint)]">
             {formatNumber(total)} kr/mån
           </b>
