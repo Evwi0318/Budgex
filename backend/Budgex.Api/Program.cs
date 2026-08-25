@@ -187,6 +187,7 @@ app.MapGet("/api/health", () => new { status = "healthy" });
 app.MapAuthEndpoints();
 app.MapEntryEndpoints();
 app.MapSavingsEndpoints();
+app.MapProfileEndpoints();
 
 app.Run();
 

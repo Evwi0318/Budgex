@@ -38,6 +38,7 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
             e.HasKey(u => u.Id);
             e.Property(u => u.Id).ValueGeneratedNever();
             e.HasIndex(u => u.Email).IsUnique();
+            e.Property(u => u.Name).HasMaxLength(60);
         });
 
         modelBuilder.Entity<SavingsAccount>(e =>

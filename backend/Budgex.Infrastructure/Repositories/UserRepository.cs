@@ -16,6 +16,12 @@ public sealed class UserRepository(BudgexDbContext db) : IUserRepository
     public async Task AddAsync(User user) =>
         await db.DomainUsers.AddAsync(user);
 
+    public Task RemoveAsync(User user)
+    {
+        db.DomainUsers.Remove(user);
+        return Task.CompletedTask;
+    }
+
     public Task SaveChangesAsync() =>
         db.SaveChangesAsync();
 }
