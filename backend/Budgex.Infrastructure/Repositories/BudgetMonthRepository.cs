@@ -11,14 +11,12 @@ public sealed class BudgetMonthRepository(BudgexDbContext db) : IBudgetMonthRepo
         db.BudgetMonths
             .Include(bm => bm.IncomeSources)
             .Include(bm => bm.Expenses)
-            .Include(bm => bm.SavingsAccounts)
             .FirstOrDefaultAsync(bm => bm.Id == id && bm.UserId == userId);
 
     public Task<BudgetMonth?> GetByYearMonthAsync(Guid userId, int year, int month) =>
         db.BudgetMonths
             .Include(bm => bm.IncomeSources)
             .Include(bm => bm.Expenses)
-            .Include(bm => bm.SavingsAccounts)
             .FirstOrDefaultAsync(bm => bm.UserId == userId
                                     && bm.Year == year
                                     && bm.Month == month);

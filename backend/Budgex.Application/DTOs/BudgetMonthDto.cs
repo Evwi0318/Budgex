@@ -14,19 +14,10 @@ public sealed record ExpenseDto(
     string Category
 );
 
-public sealed record SavingsAccountDto(
-    Guid Id,
-    string Name,
-    string Icon,
-    string RuleType,
-    decimal RuleValue
-);
-
 public sealed record BudgetMonthDto(
     Guid Id,
     int Year,
     int Month,
     List<IncomeSourceDto> IncomeSources,
-    List<ExpenseDto> Expenses,
-    List<SavingsAccountDto> SavingsAccounts
+    List<ExpenseDto> Expenses
 );

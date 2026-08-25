@@ -1,13 +1,13 @@
 using Budgex.Application.DTOs;
 using Budgex.Application.Interfaces;
-using Budgex.Domain.Allocation;
 using Budgex.Domain.Budget;
 using Budgex.Domain.Common;
 using Budgex.Domain.Entities;
+using Budgex.Domain.Savings;
 
 namespace Budgex.Application.UseCases;
 
-public sealed class GetMonthPlan(IEntryRepository entries, IBudgetMonthRepository months)
+public sealed class GetMonthPlan(IEntryRepository entries, ISavingsRepository savings)
 {
     public async Task<MonthPlanDto> ExecuteAsync(Guid userId, MonthKey month)
     {
@@ -19,7 +19,8 @@ public sealed class GetMonthPlan(IEntryRepository entries, IBudgetMonthRepositor
         var income = Total(planned, EntryKind.Income);
         var expenses = Total(planned, EntryKind.Expense);
 
-        var result = BudgetCalculator.Calculate(income, expenses, await SavingsRules(userId, month));
+        var result = BudgetCalculator.Calculate(
+            income, expenses, await TotalSavings(userId, month, planned));
 
         return new MonthPlanDto(
             month.Year,
@@ -29,14 +30,19 @@ public sealed class GetMonthPlan(IEntryRepository entries, IBudgetMonthRepositor
             new SummaryDto(result.Income, expenses, result.TotalSavings, result.SafeToSpend));
     }
 
-    private async Task<IEnumerable<IAllocationRule>> SavingsRules(Guid userId, MonthKey month)
+    private async Task<decimal> TotalSavings(
+        Guid userId, MonthKey month, IReadOnlyList<PlannedEntry> planned)
     {
-        var budgetMonth = await months.GetByYearMonthAsync(userId, month.Year, month.Month);
+        var amounts = planned
+            .Where(item => item.Entry.Kind == EntryKind.Income)
+            .ToDictionary(item => item.Entry.Id, item => item.Amount);
 
-        return (budgetMonth?.SavingsAccounts ?? []).Select<SavingsAccount, IAllocationRule>(account =>
-            account.RuleType == RuleType.Fixed
-                ? new FixedRule(account.RuleValue)
-                : new PercentageRule(account.RuleValue));
+        return SavingsPlan.For(
+                month,
+                await savings.GetForUserAsync(userId),
+                await savings.GetStatesForMonthAsync(userId, month),
+                amounts)
+            .Sum(account => account.Amount);
     }
 
     private static decimal Total(IReadOnlyList<PlannedEntry> planned, EntryKind kind) =>
