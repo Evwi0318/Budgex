@@ -53,7 +53,7 @@ export function SourcePicker({
             key={income.id}
             className={`rounded-[var(--radius-card)] border ${
               draft
-                ? "border-[var(--color-mint-dim)] bg-[var(--color-surface-2)]"
+                ? "border-[1.5px] border-[var(--color-mint)] bg-[var(--color-mint-wash)]"
                 : "border-transparent bg-[var(--color-surface-2)]"
             }`}
           >
@@ -76,7 +76,11 @@ export function SourcePicker({
               <span className="flex-1 truncate text-[14.5px] font-bold">
                 {income.name}
               </span>
-              <span className="text-[12.5px] tabular-nums text-[var(--color-text-muted)]">
+              <span
+                className={`text-[12.5px] font-bold tabular-nums ${
+                  draft ? "text-[var(--color-mint)]" : "text-[var(--color-text-muted)]"
+                }`}
+              >
                 {formatKr(income.amount)}
               </span>
             </button>
@@ -92,7 +96,7 @@ export function SourcePicker({
                         onClick={() => set(income.id, convert(draft, type, income.amount))}
                         className={`w-10 rounded-lg py-1.5 text-[12.5px] font-bold transition ${
                           draft.ruleType === type
-                            ? "bg-[var(--color-surface)] text-[var(--color-mint)]"
+                            ? "bg-[var(--color-mint)] text-[var(--color-on-mint)]"
                             : "text-[var(--color-text-muted)]"
                         }`}
                       >

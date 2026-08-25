@@ -9,8 +9,8 @@ export function SavingsTopCard({ safeToSpend, allocated }: SavingsTopCardProps) 
   const negative = safeToSpend < 0;
 
   return (
-    <div className="sticky top-3 z-10 mx-4 mb-6 flex items-center rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.55)]">
-      <div className="min-w-0 flex-1">
+    <div className="sticky top-3 z-10 mx-4 mb-6 flex items-stretch rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.55)]">
+      <div className="flex min-w-0 flex-1 flex-col justify-between">
         <Label>Kvar att spendera</Label>
         <Amount
           value={safeToSpend}
@@ -23,9 +23,9 @@ export function SavingsTopCard({ safeToSpend, allocated }: SavingsTopCardProps) 
         />
       </div>
 
-      <div className="mx-[18px] h-10 w-px shrink-0 bg-[var(--color-border)]" />
+      <div className="mx-[14px] w-px shrink-0 self-center bg-[var(--color-border)]" style={{ height: 40 }} />
 
-      <div className="min-w-0 flex-1 text-right">
+      <div className="flex min-w-0 flex-1 flex-col justify-between text-right">
         <Label>Fördelat denna månad</Label>
         <Amount
           value={allocated}
@@ -39,7 +39,7 @@ export function SavingsTopCard({ safeToSpend, allocated }: SavingsTopCardProps) 
 
 function Label({ children }: { children: string }) {
   return (
-    <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.09em] text-[var(--color-text-muted)]">
+    <div className="mb-1.5 text-[10px] font-bold uppercase leading-[1.3] tracking-[0.05em] text-[var(--color-text-muted)]">
       {children}
     </div>
   );

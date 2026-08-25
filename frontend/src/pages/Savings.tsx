@@ -6,6 +6,7 @@ import { SavingsRow } from "../components/savings/SavingsRow";
 import { SavingsForm } from "../components/savings/SavingsForm";
 import { SavingsTopCard } from "../components/savings/SavingsTopCard";
 import { BottomSheet } from "../components/ui/BottomSheet";
+import { Fab } from "../components/ui/Fab";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { useSavingsQuery } from "../hooks/useSavingsQuery";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
@@ -109,18 +110,24 @@ export function Savings() {
       <div className="px-4">
         {hasAccounts && (
           <button
-            onClick={() => !allDone && transferAll.mutate(true)}
-            disabled={allDone}
-            className={`mb-[22px] flex min-h-[50px] w-full items-center justify-center gap-2.5 rounded-[14px] border px-3.5 py-3 text-[14px] font-extrabold transition ${
+            onClick={() => transferAll.mutate(!allDone)}
+            className={`mb-[22px] flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-[14px] border px-3.5 py-3 text-[14px] font-extrabold transition active:scale-[0.99] ${
               allDone
                 ? "border-[var(--color-border)] bg-transparent text-[var(--color-text-muted)]"
-                : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] active:scale-[0.99]"
+                : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
             }`}
           >
-            <span className="text-[15px] text-[var(--color-mint)]">✓</span>
-            {allDone
-              ? `Allt överfört i ${monthName}`
-              : `Markera alla som överförda · ${formatNumber(remainingTotal)} kr`}
+            <span className="flex items-center gap-2.5">
+              <span className="text-[15px] text-[var(--color-mint)]">✓</span>
+              {allDone
+                ? `Allt överfört i ${monthName}`
+                : `Markera alla som överförda · ${formatNumber(remainingTotal)} kr`}
+            </span>
+            {allDone && (
+              <span className="text-[12px] font-bold text-[var(--color-text-faint)] underline underline-offset-[3px]">
+                Ångra alla överföringar
+              </span>
+            )}
           </button>
         )}
 
@@ -204,18 +211,7 @@ export function Savings() {
       </div>
 
       {!isLocked && (
-        <button
-          onClick={() => setAdding(true)}
-          title="Lägg till sparkonto"
-          aria-label="Lägg till sparkonto"
-          style={{
-            right: "max(20px, calc(50vw - 240px))",
-            bottom: "calc(5.5rem + env(safe-area-inset-bottom))",
-          }}
-          className="fixed z-50 grid h-[58px] w-[58px] place-items-center rounded-full bg-[var(--color-mint)] pb-1 text-[30px] font-bold leading-none text-[var(--color-on-mint)] shadow-[0_8px_24px_rgba(0,0,0,0.5),0_0_24px_var(--glow-mint)] transition active:scale-95"
-        >
-          +
-        </button>
+        <Fab onClick={() => setAdding(true)} label="Lägg till sparkonto" />
       )}
 
       <BottomSheet open={sheetOpen} onClose={requestClose}>
@@ -227,6 +223,7 @@ export function Savings() {
             incomes={plan?.income ?? []}
             sources={savings.sources}
             onSaved={closeSheet}
+            onCancel={requestClose}
             onRemove={() => {
               const account = editing;
               closeSheet();

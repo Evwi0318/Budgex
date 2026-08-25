@@ -108,11 +108,7 @@ export function SavingsRow({
 
           <div className="mt-1.5 flex items-center justify-between text-[11.5px]">
             <span className="text-[var(--color-text-muted)]">{goal.text}</span>
-            <span
-              className={
-                goal.done ? "text-[var(--color-mint)]" : "text-[var(--color-text-faint)]"
-              }
-            >
+            <span className="shrink-0 font-bold text-[var(--color-mint)]">
               {goal.eta}
             </span>
           </div>
