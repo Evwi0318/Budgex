@@ -74,7 +74,11 @@ export function Savings() {
   const monthName = getMonthName(month);
   const remaining = savings.accounts.filter((account) => !account.isTransferred);
   const done = savings.accounts.filter((account) => account.isTransferred);
-  const visible = showTransferred ? done : remaining;
+  // Bockas den sista överföringen bort finns ingen överförd-lista kvar att
+  // visa, och vyn måste falla tillbaka i samma render — annars ser det ut
+  // som att kontot försvann
+  const showDone = showTransferred && done.length > 0;
+  const visible = showDone ? done : remaining;
   const sheetOpen = adding || editing !== null;
 
   return (
@@ -102,7 +106,7 @@ export function Savings() {
       <div className="px-4 pt-5">
         <header className="mb-2.5 flex items-center gap-2.5 px-1">
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-            {showTransferred ? `Överfört i ${monthName}` : "Sparkonton"}
+            {showDone ? `Överfört i ${monthName}` : "Sparkonton"}
           </span>
 
           <span className="grid h-[21px] min-w-[21px] place-items-center rounded-full bg-[rgba(127,184,255,0.14)] px-1.5 text-[11.5px] font-extrabold text-[var(--color-savings)]">
@@ -125,10 +129,10 @@ export function Savings() {
 
             {done.length > 0 && (
               <button
-                onClick={() => setShowTransferred(!showTransferred)}
+                onClick={() => setShowTransferred(!showDone)}
                 className="rounded-full bg-[var(--color-mint-wash)] px-3 py-1.5 text-[12.5px] font-extrabold text-[var(--color-mint)] transition active:scale-95"
               >
-                {showTransferred ? `‹ ${remaining.length} kvar` : `✓ ${done.length} överförda`}
+                {showDone ? `‹ ${remaining.length} kvar` : `✓ ${done.length} överförda`}
               </button>
             )}
 
@@ -154,6 +158,10 @@ export function Savings() {
             }
             footnote={isLocked ? undefined : "Tryck på + Sparkonto uppe till höger."}
           />
+        ) : visible.length === 0 ? (
+          <p className="rounded-[var(--radius-card)] border border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] px-4 py-5 text-center text-[13.5px] font-bold text-[var(--color-mint)]">
+            🎉 Allt är överfört i {monthName}
+          </p>
         ) : (
           visible.map((account) => (
             <SavingsRow
