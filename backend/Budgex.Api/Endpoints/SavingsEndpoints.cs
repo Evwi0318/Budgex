@@ -157,8 +157,23 @@ public static class SavingsEndpoints
         var state = states.FirstOrDefault(s => s.SavingsAccountId == account.Id && s.Month == month)
                     ?? new SavingsMonthState { SavingsAccountId = account.Id, Month = month };
 
+        if (state.IsTransferred == isTransferred)
+        {
+            return state;
+        }
+
+        if (isTransferred)
+        {
+            state.Amount = SavingsPlan.PlannedTotal(account, amounts);
+            account.Saved = (account.Saved ?? 0) + state.Amount.Value;
+        }
+        else
+        {
+            account.Saved = Math.Max(0, (account.Saved ?? 0) - (state.Amount ?? 0));
+            state.Amount = null;
+        }
+
         state.IsTransferred = isTransferred;
-        state.Amount = isTransferred ? SavingsPlan.PlannedTotal(account, amounts) : null;
 
         return state;
     }
