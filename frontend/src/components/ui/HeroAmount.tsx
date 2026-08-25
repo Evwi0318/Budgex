@@ -11,7 +11,7 @@ export function HeroAmount({ value, label }: HeroAmountProps) {
 
   return (
     <span
-      className={`${toneClass} text-[40px] leading-[44px] font-extrabold tracking-tight tabular-nums`}
+      className={`${toneClass} text-[42px] leading-[46px] font-medium tracking-[-0.03em] tabular-nums`}
       aria-label={`${formatKr(value)} ${label}`}
     >
       {formatKr(value)}

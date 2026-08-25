@@ -27,22 +27,13 @@
     --color-text-faint: #5d6a64;
 
     /* --- Typografi --- */
-    --font-sans: "Nunito", ui-rounded, system-ui, sans-serif;
+    --font-sans: "Rubik", ui-sans-serif, system-ui, sans-serif;
 
     /* --- Hero-effekt (ENDAST på hero-talet) --- */
-    --gradient-hero: linear-gradient(160deg,
-            #c9ffdc 0%,
-            #6efb9b 60%,
-            #39c96f 100%);
-    --gradient-hero-danger: linear-gradient(160deg,
-            #ffd0d0 0%,
-            #ff7a7a 60%,
-            #e05555 100%);
     --gradient-hero-card: linear-gradient(160deg,
             #1b2c22 0%,
             #141a17 55%);
     --glow-mint: rgba(110, 251, 155, 0.35);
-    --glow-danger: rgba(255, 122, 122, 0.35);
 
     /* --- Radie --- */
     --radius-chip: 12px;
@@ -63,20 +54,12 @@
         font-variant-numeric: tabular-nums;
     }
 
-    /* Hero-effekten (gradient + glow) */
     .hero-amount {
-        color: var(--color-mint-light);
-        background-image: var(--gradient-hero);
-        background-clip: text;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 0 18px var(--glow-mint));
+        color: var(--color-mint);
     }
 
     .hero-amount--negative {
         color: var(--color-danger);
-        background-image: var(--gradient-hero-danger);
-        filter: drop-shadow(0 0 18px var(--glow-danger));
     }
 
     /* Hero-kort bakgrund */
@@ -97,11 +80,6 @@
             animation-duration: 0.01ms !important;
             animation-iteration-count: 1 !important;
             transition-duration: 0.01ms !important;
-        }
-
-        .hero-amount,
-        .hero-amount--negative {
-            filter: none;
         }
     }
 }
