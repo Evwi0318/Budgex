@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { motion } from "motion/react";
 import { Button } from "../ui/Button";
 import { NumberField } from "../ui/NumberField";
 import { categoriesFor } from "../../lib/categories";
@@ -131,6 +132,8 @@ export const Label = ({ children }: { children: string }) => (
   </span>
 );
 
+const SWIPE = 30;
+
 interface SegmentedProps {
   options: [string, string];
   selected: number;
@@ -138,22 +141,47 @@ interface SegmentedProps {
 }
 
 export function Segmented({ options, selected, onSelect }: SegmentedProps) {
+  const id = useId();
+
   return (
-    <div className="flex gap-1 rounded-2xl bg-[var(--color-surface-2)] p-1">
+    <motion.div
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0}
+      dragMomentum={false}
+      onDragEnd={(_, info) => {
+        if (info.offset.x < -SWIPE) onSelect(1);
+        if (info.offset.x > SWIPE) onSelect(0);
+      }}
+      className="flex gap-1 rounded-2xl bg-[var(--color-surface-2)] p-1"
+      style={{ touchAction: "pan-y" }}
+    >
       {options.map((option, index) => (
         <button
           key={option}
           type="button"
           onClick={() => onSelect(index)}
-          className={`flex-1 rounded-xl py-2.5 text-[13.5px] font-bold transition ${
-            index === selected
-              ? "bg-[var(--color-bg)] text-[var(--color-mint)]"
-              : "text-[var(--color-text-muted)]"
-          }`}
+          className="relative flex-1 rounded-xl py-2.5 text-[13.5px] font-bold"
         >
-          {option}
+          {index === selected && (
+            <motion.span
+              layoutId={`segment-${id}`}
+              transition={{ type: "spring", damping: 26, stiffness: 320 }}
+              className="absolute inset-0 rounded-xl bg-[var(--color-bg)]"
+            />
+          )}
+
+          <span
+            className={`relative transition-colors ${
+              index === selected
+                ? "text-[var(--color-mint)]"
+                : "text-[var(--color-text-muted)]"
+            }`}
+          >
+            {option}
+          </span>
         </button>
       ))}
-    </div>
+    </motion.div>
   );
 }

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence } from "motion/react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroCard } from "../components/home/HeroCard";
@@ -8,6 +9,7 @@ import { EditEntryForm } from "../components/home/EditEntryForm";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { Fab } from "../components/ui/Fab";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { UndoToast } from "../components/ui/UndoToast";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
 import {
@@ -19,6 +21,13 @@ import { isPast } from "../lib/month";
 import type { EntryScope } from "../hooks/useEntryMutation";
 import type { MonthOutletContext } from "../components/layout/AppShell";
 import type { MonthPlan, PlannedEntry } from "../hooks/useMonthPlanQuery";
+
+const UNDO_MS = 5000;
+
+interface PendingDelete {
+  entry: PlannedEntry;
+  scope: EntryScope;
+}
 
 export function Home() {
   const {
@@ -41,6 +50,9 @@ export function Home() {
   const [editDirty, setEditDirty] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [removing, setRemoving] = useState<PlannedEntry | null>(null);
+  const [pending, setPending] = useState<PendingDelete | null>(null);
+  const pendingRef = useRef<PendingDelete | null>(null);
+  const timer = useRef<number | null>(null);
 
   const closeEdit = () => {
     setEditing(null);
@@ -50,6 +62,55 @@ export function Home() {
 
   const requestCloseEdit = () => (editDirty ? setDiscarding(true) : closeEdit());
 
+  // Raderingen skickas först när ångra-fönstret runnit ut. Utan fördröjningen
+  // skulle "Ångra" behöva skapa posten på nytt, och den skulle få nytt id.
+  const commit = () => {
+    const current = pendingRef.current;
+
+    clearTimer();
+    pendingRef.current = null;
+    setPending(null);
+
+    if (current) {
+      deleteEntry.mutate({ id: current.entry.id, scope: current.scope });
+    }
+  };
+
+  const clearTimer = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+  };
+
+  const scheduleDelete = (entry: PlannedEntry, scope: EntryScope) => {
+    commit();
+
+    const next = { entry, scope };
+
+    pendingRef.current = next;
+    setPending(next);
+    timer.current = window.setTimeout(commit, UNDO_MS);
+  };
+
+  const undoDelete = () => {
+    clearTimer();
+    pendingRef.current = null;
+    setPending(null);
+  };
+
+  useEffect(() => () => {
+    if (timer.current === null) return;
+
+    window.clearTimeout(timer.current);
+    if (pendingRef.current) {
+      deleteEntry.mutate({
+        id: pendingRef.current.entry.id,
+        scope: pendingRef.current.scope,
+      });
+    }
+    // deleteEntry byter identitet vid varje render, men muteringen är stabil
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const requestRemove = (entry: PlannedEntry) => {
     closeEdit();
 
@@ -58,16 +119,14 @@ export function Home() {
       return;
     }
 
-    deleteEntry.mutate({ id: entry.id, scope: "Onwards" });
+    scheduleDelete(entry, "Onwards");
   };
 
   const confirmRemove = (scope: EntryScope) => {
     if (!removing) return;
 
-    deleteEntry.mutate(
-      { id: removing.id, scope },
-      { onSuccess: () => setRemoving(null) }
-    );
+    scheduleDelete(removing, scope);
+    setRemoving(null);
   };
 
   if (isLoading) {
@@ -88,7 +147,9 @@ export function Home() {
   }
 
   const monthName = getMonthName(month);
-  const entries = view === "Income" ? plan.income : plan.expenses;
+  const entries = (view === "Income" ? plan.income : plan.expenses).filter(
+    (entry) => entry.id !== pending?.entry.id
+  );
   const removingNoun = removing?.kind === "Income" ? "Inkomsten" : "Utgiften";
 
   return (
@@ -142,8 +203,8 @@ export function Home() {
           </div>
         </header>
 
-        {entries.length > 0 ? (
-          entries.map((entry) => (
+        <AnimatePresence initial={false}>
+          {entries.map((entry) => (
             <EntryRow
               key={entry.id}
               entry={entry}
@@ -155,8 +216,10 @@ export function Home() {
                 setPaid.mutate({ id: entry.id, isPaid: !entry.isPaid })
               }
             />
-          ))
-        ) : (
+          ))}
+        </AnimatePresence>
+
+        {entries.length === 0 && (
           <Empty plan={plan} view={view} monthName={monthName} closed={isClosed} />
         )}
       </div>
@@ -191,6 +254,15 @@ export function Home() {
         ]}
         onPick={(index) => (index === 0 ? closeEdit() : setDiscarding(false))}
         onCancel={() => setDiscarding(false)}
+      />
+
+      <UndoToast
+        message={
+          pending
+            ? `${pending.entry.kind === "Income" ? "Inkomsten" : "Utgiften"} ${pending.entry.name} borttagen`
+            : null
+        }
+        onUndo={undoDelete}
       />
 
       <ConfirmDialog

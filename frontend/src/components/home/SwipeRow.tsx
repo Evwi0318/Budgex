@@ -1,8 +1,11 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { animate, motion, useMotionValue } from "motion/react";
 import type { ReactNode } from "react";
 
-const REVEAL = 78;
-const THRESHOLD = 38;
+const REVEAL = 88;
+const FULL_SWIPE = 165;
+const FULL_SWIPE_VELOCITY = 800;
+const SPRING = { type: "spring", damping: 30, stiffness: 400 } as const;
 
 interface SwipeRowProps {
   onDelete: () => void;
@@ -11,67 +14,65 @@ interface SwipeRowProps {
 }
 
 export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps) {
-  const [offset, setOffset] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const startX = useRef<number | null>(null);
-  const opened = useRef(false);
-
-  const handlePointerDown = (event: React.PointerEvent) => {
-    if (disabled) return;
-    startX.current = event.clientX;
-    setDragging(true);
-  };
-
-  const handlePointerMove = (event: React.PointerEvent) => {
-    if (startX.current === null) return;
-    const base = opened.current ? -REVEAL : 0;
-    const next = event.clientX - startX.current + base;
-    setOffset(Math.min(0, Math.max(-REVEAL, next)));
-  };
-
-  const handlePointerEnd = () => {
-    if (startX.current === null) return;
-    opened.current = offset < -THRESHOLD;
-    setOffset(opened.current ? -REVEAL : 0);
-    startX.current = null;
-    setDragging(false);
-  };
+  const x = useMotionValue(0);
+  const [open, setOpen] = useState(false);
 
   const close = () => {
-    opened.current = false;
-    setOffset(0);
+    animate(x, 0, SPRING);
+    setOpen(false);
   };
 
   return (
-    <div className="relative mb-2 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
+    <motion.div
+      layout
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+      transition={{ type: "spring", damping: 34, stiffness: 420 }}
+      className="relative mb-2 overflow-hidden rounded-[var(--radius-card)]"
+    >
       <button
         onClick={() => {
           close();
           onDelete();
         }}
-        tabIndex={offset < 0 ? 0 : -1}
-        className={`absolute inset-y-0 right-0 grid w-[82px] place-items-center rounded-[var(--radius-card)] bg-[var(--color-danger)] text-[13px] font-extrabold text-[#3a0d0d] transition-opacity ${
-          offset < 0 ? "opacity-100" : "invisible opacity-0"
-        }`}
+        tabIndex={open ? 0 : -1}
+        aria-hidden={!open}
+        className="absolute inset-y-0 right-0 grid w-[88px] place-items-center rounded-[var(--radius-card)] bg-[var(--color-danger)] text-[13px] font-extrabold text-[#3a0d0d]"
       >
         Ta bort
       </button>
 
-      <div
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerEnd}
-        onPointerCancel={handlePointerEnd}
-        onPointerLeave={handlePointerEnd}
-        style={{
-          transform: `translateX(${offset}px)`,
-          transition: dragging ? "none" : "transform .22s cubic-bezier(.3,.8,.3,1)",
-          touchAction: "pan-y",
+      <motion.div
+        drag={disabled ? false : "x"}
+        style={{ x, touchAction: "pan-y" }}
+        dragConstraints={{ left: -REVEAL, right: 0 }}
+        dragElastic={{ left: 0.55, right: 0 }}
+        dragMomentum={false}
+        onDragEnd={(_, info) => {
+          const full =
+            info.offset.x < -FULL_SWIPE || info.velocity.x < -FULL_SWIPE_VELOCITY;
+
+          if (full) {
+            onDelete();
+            return;
+          }
+
+          const shouldOpen = info.offset.x < -REVEAL / 2;
+
+          animate(x, shouldOpen ? -REVEAL : 0, SPRING);
+          setOpen(shouldOpen);
         }}
-        className="relative"
+        onClickCapture={(event) => {
+          if (!open) return;
+          event.stopPropagation();
+          event.preventDefault();
+          close();
+        }}
+        className="relative will-change-transform"
       >
         {children}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

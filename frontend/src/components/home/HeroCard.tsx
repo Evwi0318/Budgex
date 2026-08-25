@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { HeroAmount } from "../ui/HeroAmount";
 import { formatKr } from "../../lib/format";
 import type { MonthSummary } from "../../hooks/useMonthPlanQuery";
@@ -96,11 +97,15 @@ function Tab({ label, amount, tone, underline, active, onClick }: TabProps) {
       >
         {formatKr(amount)}
       </span>
-      <span
-        className={`mx-auto mt-2 block h-[3px] w-[34px] rounded-full ${
-          active ? underline : "bg-transparent"
-        }`}
-      />
+      <span className="relative mx-auto mt-2 block h-[3px] w-[34px]">
+        {active && underline && (
+          <motion.span
+            layoutId="hero-tab-underline"
+            transition={{ type: "spring", damping: 28, stiffness: 340 }}
+            className={`absolute inset-0 rounded-full ${underline}`}
+          />
+        )}
+      </span>
     </button>
   );
 }

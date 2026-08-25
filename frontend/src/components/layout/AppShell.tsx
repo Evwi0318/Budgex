@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useLocation, useNavigate, useOutlet } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { TopBar } from "./TopBar";
 import { BottomNav } from "./BottomNav";
 import { BottomSheet } from "../ui/BottomSheet";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { AddEntryForm } from "../home/AddEntryForm";
 import { currentMonth } from "../../lib/month";
+import { useSlideDirection } from "../../hooks/useSlideDirection";
 import type { EntryKind } from "../../lib/categories";
+
+const TABS = ["/", "/savings", "/profile"];
+const SWIPE_DISTANCE = 70;
+const SWIPE_VELOCITY = 450;
 
 /**
  * Månadsvalet och vald flik bor här och inte i Home. Månaden behövs av både
@@ -24,6 +30,8 @@ export interface MonthOutletContext {
 }
 
 export function AppShell() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [{ year, month }, setMonth] = useState(currentMonth);
   const [view, setView] = useState<EntryKind>("Expense");
   const [addSheetOpen, setAddSheetOpen] = useState(false);
@@ -56,13 +64,45 @@ export function AppShell() {
     openAdd: () => setAddSheetOpen(true),
   };
 
+  const outlet = useOutlet(outletContext);
+  const tab = Math.max(0, TABS.indexOf(location.pathname));
+  const direction = useSlideDirection(tab);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg)]">
       <div className="flex h-screen w-full max-w-[420px] flex-col bg-[var(--color-bg)]">
         <TopBar />
 
-        <main className="flex-1 overflow-y-auto pb-24">
-          <Outlet context={outletContext} />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24">
+          <motion.div
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.14}
+            dragMomentum={false}
+            onDragEnd={(_, info) => {
+              const forward =
+                info.offset.x < -SWIPE_DISTANCE || info.velocity.x < -SWIPE_VELOCITY;
+              const back =
+                info.offset.x > SWIPE_DISTANCE || info.velocity.x > SWIPE_VELOCITY;
+
+              if (forward && tab < TABS.length - 1) navigate(TABS[tab + 1]);
+              else if (back && tab > 0) navigate(TABS[tab - 1]);
+            }}
+            className="min-h-full"
+          >
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, x: direction * 48 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: direction * -48 }}
+                transition={{ type: "spring", damping: 30, stiffness: 320 }}
+                className="will-change-transform"
+              >
+                {outlet}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
         </main>
 
         <BottomNav />
