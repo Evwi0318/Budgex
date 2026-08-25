@@ -132,7 +132,7 @@ export function Savings() {
         )}
 
         <header className="mb-3 flex items-center gap-2 px-1">
-          <span className="text-[11px] font-bold uppercase tracking-[0.11em] text-[var(--color-text-muted)]">
+          <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.11em] text-[var(--color-text-muted)]">
             {showDone ? `Överfört i ${monthName}` : "Sparkonton"}
           </span>
 
@@ -141,6 +141,13 @@ export function Savings() {
           </span>
 
           <span className="flex-1" />
+
+          {!isLocked && hasAccounts && done.length === 0 && (
+            <span className="flex min-w-0 items-center gap-[7px] text-[11px] font-bold text-[var(--color-text-muted)]">
+              <span className="truncate">Bocka av när du gjort överföringen</span>
+              <span className="h-[18px] w-[18px] shrink-0 rounded-full border-[1.8px] border-[var(--color-text-faint)]" />
+            </span>
+          )}
 
           {isClosed && (
             <button
@@ -168,13 +175,6 @@ export function Savings() {
             </button>
           )}
         </header>
-
-        {!isLocked && hasAccounts && done.length === 0 && (
-          <div className="-mt-1 mb-3 flex items-center justify-end gap-[7px] px-1 text-[11px] font-bold text-[var(--color-text-muted)]">
-            Bocka av när du gjort överföringen
-            <span className="h-[18px] w-[18px] shrink-0 rounded-full border-[1.8px] border-[var(--color-text-faint)]" />
-          </div>
-        )}
 
         {!hasAccounts ? (
           <EmptyState

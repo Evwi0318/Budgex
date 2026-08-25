@@ -8,13 +8,11 @@ public enum EntryCategory
 {
     Housing,
     Food,
-    Restaurant,
     Transport,
     Bills,
     Subscription,
     Loan,
     Insurance,
-    Fitness,
     Health,
     Shopping,
     Travel,
