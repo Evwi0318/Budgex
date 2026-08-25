@@ -16,8 +16,8 @@ export function SavingsTopCard({ safeToSpend, allocated }: SavingsTopCardProps) 
           value={safeToSpend}
           className={
             negative
-              ? "text-[var(--color-danger)] [text-shadow:0_0_12px_var(--glow-danger)]"
-              : "text-[var(--color-mint)] [text-shadow:0_0_12px_var(--glow-mint)]"
+              ? "text-[var(--color-danger)]"
+              : "text-[var(--color-mint)]"
           }
           unitClassName={negative ? "text-[var(--color-danger)]/80" : "text-[var(--color-mint)]/80"}
         />
@@ -55,9 +55,9 @@ function Amount({
   unitClassName?: string;
 }) {
   return (
-    <div className={`text-[24px] font-extrabold tracking-[-0.5px] tabular-nums ${className}`}>
+    <div className={`text-[24px] font-medium tracking-[-0.022em] tabular-nums ${className}`}>
       {formatNumber(value)}{" "}
-      <span className={`text-[14px] font-bold ${unitClassName}`}>kr</span>
+      <span className={`text-[13px] font-normal ${unitClassName}`}>kr</span>
     </div>
   );
 }
