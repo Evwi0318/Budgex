@@ -36,7 +36,7 @@ export function SavingsRow({
 
   return (
     <div
-      className={`mb-2 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-3.5 py-3 transition-opacity ${
+      className={`mb-2 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-3 transition-opacity ${
         account.isTransferred ? "opacity-60" : ""
       }`}
     >
