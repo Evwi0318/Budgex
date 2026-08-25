@@ -1,25 +1,59 @@
 using Budgex.Application.Interfaces;
+using Budgex.Domain.Common;
 using Budgex.Domain.Entities;
 using Budgex.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Budgex.Infrastructure.Repositories;
 
-public sealed class SavingsAccountRepository(BudgexDbContext db) : ISavingsAccountRepository
+public sealed class SavingsRepository(BudgexDbContext db) : ISavingsRepository
 {
-    // Ägarskapet verifieras via månaden — utan detta kan en inloggad
-    // användare radera andras sparkonton genom att gissa id:n
+    public Task<List<SavingsAccount>> GetForUserAsync(Guid userId) =>
+        db.SavingsAccounts
+            .Include(account => account.Rules)
+            .Where(account => account.UserId == userId)
+            .ToListAsync();
+
     public Task<SavingsAccount?> GetByIdAsync(Guid id, Guid userId) =>
-        db.SavingsAccounts.FirstOrDefaultAsync(sa =>
-            sa.Id == id &&
-            db.BudgetMonths.Any(bm => bm.Id == sa.BudgetMonthId && bm.UserId == userId));
+        db.SavingsAccounts
+            .Include(account => account.Rules)
+            .FirstOrDefaultAsync(account => account.Id == id && account.UserId == userId);
+
+    public Task<List<SavingsMonthState>> GetStatesForMonthAsync(Guid userId, MonthKey month) =>
+        db.SavingsMonthStates
+            .Where(state => state.Month == month &&
+                            db.SavingsAccounts.Any(account => account.Id == state.SavingsAccountId &&
+                                                              account.UserId == userId))
+            .ToListAsync();
 
     public async Task AddAsync(SavingsAccount account) =>
         await db.SavingsAccounts.AddAsync(account);
 
-    public Task DeleteAsync(SavingsAccount account)
+    public Task RemoveAsync(SavingsAccount account)
     {
         db.SavingsAccounts.Remove(account);
+        return Task.CompletedTask;
+    }
+
+    public Task ReplaceRulesAsync(SavingsAccount account, IEnumerable<AllocationRule> rules)
+    {
+        db.AllocationRules.RemoveRange(account.Rules);
+        account.Rules.Clear();
+        account.Rules.AddRange(rules);
+
+        return Task.CompletedTask;
+    }
+
+    public Task SaveStatesAsync(IEnumerable<SavingsMonthState> states)
+    {
+        foreach (var state in states)
+        {
+            if (db.Entry(state).State == EntityState.Detached)
+            {
+                db.SavingsMonthStates.Add(state);
+            }
+        }
+
         return Task.CompletedTask;
     }
 

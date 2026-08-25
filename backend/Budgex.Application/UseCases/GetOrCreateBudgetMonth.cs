@@ -32,8 +32,6 @@ public sealed class GetOrCreateBudgetMonth(IBudgetMonthRepository repo)
         bm.IncomeSources.Select(i => new IncomeSourceDto(
             i.Id, i.Type.ToString(), i.Amount, i.LoanAmount)).ToList(),
         bm.Expenses.Select(e => new ExpenseDto(
-            e.Id, e.Name, e.Amount, e.Category)).ToList(),
-        bm.SavingsAccounts.Select(sa => new SavingsAccountDto(
-            sa.Id, sa.Name, sa.Icon, sa.RuleType.ToString(), sa.RuleValue)).ToList()
+            e.Id, e.Name, e.Amount, e.Category)).ToList()
     );
 }

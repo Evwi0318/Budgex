@@ -16,6 +16,8 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
     public DbSet<IncomeSource> IncomeSources => Set<IncomeSource>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<SavingsAccount> SavingsAccounts => Set<SavingsAccount>();
+    public DbSet<AllocationRule> AllocationRules => Set<AllocationRule>();
+    public DbSet<SavingsMonthState> SavingsMonthStates => Set<SavingsMonthState>();
     public DbSet<Entry> Entries => Set<Entry>();
     public DbSet<EntryMonthState> EntryMonthStates => Set<EntryMonthState>();
 
@@ -58,10 +60,6 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
              .WithOne()
              .HasForeignKey(ex => ex.BudgetMonthId)
              .OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(bm => bm.SavingsAccounts)
-             .WithOne()
-             .HasForeignKey(sa => sa.BudgetMonthId)
-             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<IncomeSource>(e =>
@@ -83,7 +81,46 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
         {
             e.HasKey(sa => sa.Id);
             e.Property(sa => sa.Id).ValueGeneratedNever();
-            e.Property(sa => sa.RuleValue).HasPrecision(18, 2);
+            e.Property(sa => sa.Name).HasMaxLength(60);
+            e.Property(sa => sa.Icon).HasMaxLength(8);
+            e.Property(sa => sa.Goal).HasPrecision(18, 2);
+            e.Property(sa => sa.Saved).HasPrecision(18, 2);
+            e.Property(sa => sa.From).HasConversion(monthKey).HasMaxLength(7);
+            e.Property(sa => sa.To).HasConversion(monthKey).HasMaxLength(7);
+            e.HasIndex(sa => sa.UserId);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(sa => sa.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(sa => sa.Rules)
+             .WithOne()
+             .HasForeignKey(rule => rule.SavingsAccountId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // SourceEntryId har medvetet ingen främmande nyckel. Raderas inkomsten
+        // ska regeln leva kvar och visas som "Källan finns inte längre", inte
+        // försvinna tyst och ändra sparandet.
+        modelBuilder.Entity<AllocationRule>(e =>
+        {
+            e.HasKey(rule => rule.Id);
+            e.Property(rule => rule.Id).ValueGeneratedNever();
+            e.Property(rule => rule.RuleType).HasConversion<string>().HasMaxLength(16);
+            e.Property(rule => rule.Value).HasPrecision(18, 2);
+            e.HasIndex(rule => rule.SourceEntryId);
+        });
+
+        modelBuilder.Entity<SavingsMonthState>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.Property(s => s.Id).ValueGeneratedNever();
+            e.Property(s => s.Amount).HasPrecision(18, 2);
+            e.Property(s => s.Month).HasConversion(monthKey).HasMaxLength(7);
+            e.HasIndex(s => new { s.SavingsAccountId, s.Month }).IsUnique();
+            e.HasOne<SavingsAccount>()
+             .WithMany()
+             .HasForeignKey(s => s.SavingsAccountId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Entry>(e =>
