@@ -16,6 +16,7 @@ export function useBudgetMutation<TVariables>(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["month"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
+      queryClient.invalidateQueries({ queryKey: ["savings"] });
     },
   });
 }

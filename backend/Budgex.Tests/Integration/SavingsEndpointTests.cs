@@ -70,6 +70,51 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task Transfer_MovesTheGoalForward_AndUndoingTakesItBack()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+
+        var response = await client.PostAsJsonAsync(AugustSavings, new
+        {
+            name = "Resa",
+            icon = "✈",
+            goal = 12000m,
+            saved = 7200m,
+            rules = new[] { Fixed(salary, 1000m) },
+        });
+        var id = (await response.Content.ReadFromJsonAsync<Guid>())!;
+
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true });
+        Assert.Equal(8200m, Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts).Saved);
+
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = false });
+        Assert.Equal(7200m, Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts).Saved);
+    }
+
+    [Fact]
+    public async Task Transfer_TwiceInARow_DoesNotCountTwice()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+
+        var response = await client.PostAsJsonAsync(AugustSavings, new
+        {
+            name = "Resa",
+            icon = "✈",
+            goal = 12000m,
+            saved = 0m,
+            rules = new[] { Fixed(salary, 1000m) },
+        });
+        var id = (await response.Content.ReadFromJsonAsync<Guid>())!;
+
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true });
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true });
+
+        Assert.Equal(1000m, Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts).Saved);
+    }
+
+    [Fact]
     public async Task MarkAll_TransfersEveryAccountInTheMonth()
     {
         var client = await AuthenticateAsync();
