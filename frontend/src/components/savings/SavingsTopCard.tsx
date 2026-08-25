@@ -39,7 +39,7 @@ export function SavingsTopCard({ safeToSpend, allocated }: SavingsTopCardProps) 
 
 function Label({ children }: { children: string }) {
   return (
-    <div className="mb-1.5 text-[10px] font-bold uppercase leading-[1.3] tracking-[0.05em] text-[var(--color-text-muted)]">
+    <div className="mb-1.5 text-[11.5px] font-medium leading-[1.3] text-[var(--color-text-muted)]">
       {children}
     </div>
   );
