@@ -91,7 +91,7 @@ public sealed class AuthEndpointsTests(AuthApiFactory factory)
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/months/2026/7");
+        var response = await client.GetAsync("/api/months/2026/7/entries");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -110,7 +110,7 @@ public sealed class AuthEndpointsTests(AuthApiFactory factory)
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
 
-        var response = await client.GetAsync("/api/months/2026/7");
+        var response = await client.GetAsync("/api/months/2026/7/entries");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
