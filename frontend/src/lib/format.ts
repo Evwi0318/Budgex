@@ -8,6 +8,9 @@ const kr = new Intl.NumberFormat("sv-SE", {
 
 export const formatKr = (value: number): string => `${kr.format(value)} kr`;
 
+/** Bara talet, för ytor där "kr" sätts i egen mindre stil */
+export const formatNumber = (value: number): string => kr.format(value);
+
 const monthNames = [
   "januari",
   "februari",

@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { formatKr } from "../../lib/format";
+import { formatKr, formatNumber } from "../../lib/format";
 import { goalProgress } from "../../lib/savings";
 import type { SavingsAccount, SourceUsage } from "../../hooks/useSavingsQuery";
 
@@ -47,7 +47,7 @@ export function SavingsRow({
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
           aria-label={`Öppna ${account.name}`}
         >
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[rgba(127,184,255,0.14)] text-[17px]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--color-surface-2)] text-[19px]">
             {account.icon}
           </span>
 
@@ -65,11 +65,11 @@ export function SavingsRow({
           </span>
 
           <span className="shrink-0 text-right">
-            <span className="text-[15px] font-extrabold tabular-nums text-[var(--color-savings)]">
-              {formatKr(account.amount)}
+            <span className="text-[16px] font-extrabold tabular-nums text-[var(--color-mint)]">
+              {formatNumber(account.amount)}
             </span>
-            <span className="ml-1 text-[11px] text-[var(--color-text-faint)]">
-              /mån
+            <span className="ml-1 text-[11px] font-bold text-[var(--color-text-muted)]">
+              kr/mån
             </span>
           </span>
         </button>
