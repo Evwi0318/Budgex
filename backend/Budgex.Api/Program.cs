@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -20,12 +22,13 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        // Vite byter port så fort 5173 är upptagen. I utvecklingsläge
-        // godtas därför vilken loopback-adress som helst; i produktion
+        // Vite byter port så fort 5173 är upptagen, och en mobil som testar
+        // mot datorn kommer från nätverkets adress i stället för loopback.
+        // I utvecklingsläge godtas därför hela det lokala nätet; i produktion
         // gäller bara de riktiga värdarna.
         if (builder.Environment.IsDevelopment())
         {
-            policy.SetIsOriginAllowed(origin => new Uri(origin).IsLoopback);
+            policy.SetIsOriginAllowed(IsLocalNetwork);
         }
         else
         {
@@ -190,5 +193,22 @@ app.MapSavingsEndpoints();
 app.MapProfileEndpoints();
 
 app.Run();
+
+static bool IsLocalNetwork(string origin)
+{
+    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+    if (uri.IsLoopback) return true;
+    if (!IPAddress.TryParse(uri.Host, out var address)) return false;
+
+    var octets = address.GetAddressBytes();
+
+    return address.AddressFamily == AddressFamily.InterNetwork && octets[0] switch
+    {
+        10 => true,
+        172 => octets[1] >= 16 && octets[1] <= 31,
+        192 => octets[1] == 168,
+        _ => false
+    };
+}
 
 public partial class Program { }
