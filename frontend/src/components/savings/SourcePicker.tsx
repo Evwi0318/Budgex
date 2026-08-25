@@ -72,7 +72,9 @@ export function SourcePicker({
                 <Check size={13} strokeWidth={3} />
               </span>
 
-              <span className="text-[16px]">{category.emoji}</span>
+              <span className="grid shrink-0 place-items-center text-[var(--color-text-muted)]">
+                <category.icon size={15} strokeWidth={2} />
+              </span>
               <span className="flex-1 truncate text-[14.5px] font-bold">
                 {income.name}
               </span>

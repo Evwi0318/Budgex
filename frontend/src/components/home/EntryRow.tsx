@@ -32,7 +32,7 @@ export function EntryRow({
 
   return (
     <SwipeRow onDelete={onDelete} disabled={locked}>
-      <div className="flex items-center gap-3 bg-[var(--color-surface)] px-3.5 py-2.5">
+      <div className="flex items-center gap-2.5 bg-[var(--color-surface)] px-3 py-2">
         {isExpense &&
           (entry.isAutogiro ? (
             <span
@@ -59,8 +59,8 @@ export function EntryRow({
             </button>
           ))}
 
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--color-mint-wash)] text-[17px]">
-          {category.emoji}
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[var(--color-surface-2)] text-[var(--color-text-muted)]">
+          <category.icon size={17} strokeWidth={2} />
         </span>
 
         <button

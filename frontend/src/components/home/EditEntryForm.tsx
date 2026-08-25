@@ -108,7 +108,7 @@ export function EditEntryForm({
                     : "bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
                 }`}
               >
-                <span className="text-[17px]">{option.emoji}</span>
+                <option.icon size={19} strokeWidth={2} />
                 {option.label}
               </button>
             ))}
