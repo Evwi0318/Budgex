@@ -27,7 +27,11 @@ export function SavingsTopCard({ safeToSpend, allocated }: SavingsTopCardProps) 
 
       <div className="min-w-0 flex-1 text-right">
         <Label>Fördelat denna månad</Label>
-        <Amount value={allocated} />
+        <Amount
+          value={allocated}
+          className="text-[var(--color-savings)]"
+          unitClassName="text-[var(--color-savings)]/80"
+        />
       </div>
     </div>
   );
