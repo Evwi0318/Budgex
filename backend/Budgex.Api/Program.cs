@@ -163,6 +163,12 @@ app.UseForwardedHeaders();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    // Bara i utvecklingsläge. En container som ändrar schemat vid start är
+    // fel i produktion — där körs migreringarna som ett eget steg.
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<BudgexDbContext>()
+        .Database.MigrateAsync();
 }
 else
 {
