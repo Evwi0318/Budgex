@@ -43,7 +43,7 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
   };
 
   return (
-    <div className="relative mb-2 overflow-hidden rounded-[var(--radius-card)]">
+    <div className="relative mb-2 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
       <button
         onClick={() => {
           close();

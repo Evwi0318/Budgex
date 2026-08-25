@@ -6,6 +6,7 @@ import { EntryRow } from "../components/home/EntryRow";
 import { EmptyState } from "../components/home/EmptyState";
 import { EditEntryForm } from "../components/home/EditEntryForm";
 import { BottomSheet } from "../components/ui/BottomSheet";
+import { Fab } from "../components/ui/Fab";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
@@ -138,18 +139,6 @@ export function Home() {
               </button>
             )}
 
-            {!isLocked && (
-              <button
-                onClick={openAdd}
-                className={`rounded-full px-3 py-1.5 text-[12.5px] font-extrabold transition active:scale-95 ${
-                  view === "Income"
-                    ? "bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
-                    : "bg-[var(--color-danger-wash)] text-[var(--color-danger)]"
-                }`}
-              >
-                + {view === "Income" ? "Inkomst" : "Utgift"}
-              </button>
-            )}
           </div>
         </header>
 
@@ -171,6 +160,13 @@ export function Home() {
           <Empty plan={plan} view={view} monthName={monthName} closed={isClosed} />
         )}
       </div>
+
+      {!isLocked && (
+        <Fab
+          onClick={openAdd}
+          label={view === "Income" ? "Lägg till inkomst" : "Lägg till utgift"}
+        />
+      )}
 
       <BottomSheet open={editing !== null} onClose={requestCloseEdit}>
         {editing && (
@@ -239,7 +235,7 @@ function Empty({ plan, view, monthName, closed }: EmptyProps) {
         emoji="👋"
         title="Välkommen till Budgex"
         body="Börja med din inkomst — då vet appen hur mycket du har att röra dig med. Utgifterna lägger du till efteråt."
-        footnote="Tryck på + till höger om rubriken för att lägga till."
+        footnote="Tryck på + nere till höger för att lägga till."
       />
     );
   }
