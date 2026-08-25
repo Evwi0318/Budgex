@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { SwipeRow } from "./SwipeRow";
 import { categoryOf } from "../../lib/categories";
 import { formatKr } from "../../lib/format";
@@ -7,18 +8,24 @@ interface EntryRowProps {
   entry: PlannedEntry;
   monthName: string;
   locked: boolean;
+  refocusAmount: boolean;
   onOpen: () => void;
   onDelete: () => void;
   onTogglePaid: () => void;
+  onAmountCommit: (amount: number) => void;
+  onAmountRefocused: () => void;
 }
 
 export function EntryRow({
   entry,
   monthName,
   locked,
+  refocusAmount,
   onOpen,
   onDelete,
   onTogglePaid,
+  onAmountCommit,
+  onAmountRefocused,
 }: EntryRowProps) {
   const category = categoryOf(entry.kind, entry.category);
   const isExpense = entry.kind === "Expense";
@@ -29,6 +36,36 @@ export function EntryRow({
     : entry.repeats
       ? "Varje månad"
       : `Bara ${monthName}`;
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(entry.amount));
+  const [savedAmount, setSavedAmount] = useState(entry.amount);
+
+  // Utkastet nollställs bara när det sparade beloppet faktiskt ändrats.
+  // Under en öppen omfattningsdialog står entry.amount stilla, och då ska
+  // det man skrivit ligga kvar — inte ersättas av det gamla värdet.
+  if (savedAmount !== entry.amount) {
+    setSavedAmount(entry.amount);
+    setDraft(String(entry.amount));
+  }
+
+  const showInput = (editing || refocusAmount) && !locked;
+
+  const commit = () => {
+    setEditing(false);
+
+    const digits = draft.replace(/\D/g, "");
+
+    if (digits === "") {
+      setDraft(String(entry.amount));
+      return;
+    }
+
+    const value = Number(digits);
+    if (value !== entry.amount) onAmountCommit(value);
+  };
+
+  const amountTone = entry.kind === "Income" ? "text-[var(--color-mint)]" : "";
 
   return (
     <SwipeRow onDelete={onDelete} disabled={locked}>
@@ -80,13 +117,45 @@ export function EntryRow({
           </span>
         </button>
 
-        <span
-          className={`text-[15px] font-extrabold tabular-nums ${
-            entry.kind === "Income" ? "text-[var(--color-mint)]" : ""
-          } ${paid ? "opacity-50" : ""}`}
-        >
-          {formatKr(entry.amount)}
-        </span>
+        {showInput ? (
+          <input
+            type="text"
+            inputMode="numeric"
+            value={draft}
+            autoFocus
+            onFocus={(event) => {
+              setEditing(true);
+              onAmountRefocused();
+              event.target.select();
+            }}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.currentTarget.blur();
+                return;
+              }
+
+              if (event.key === "Escape") {
+                setDraft(String(entry.amount));
+                setEditing(false);
+              }
+            }}
+            aria-label={`Belopp för ${entry.name}`}
+            className={`w-[84px] shrink-0 rounded-lg bg-[var(--color-surface-2)] px-2 py-0.5 text-right text-[15px] font-extrabold tabular-nums outline-none ring-1 ring-[var(--color-mint-dim)] ${amountTone}`}
+          />
+        ) : (
+          <button
+            onClick={() => !locked && setEditing(true)}
+            disabled={locked}
+            aria-label={`Ändra beloppet för ${entry.name}`}
+            className={`shrink-0 text-[15px] font-extrabold tabular-nums ${amountTone} ${
+              paid ? "opacity-50" : ""
+            }`}
+          >
+            {formatKr(entry.amount)}
+          </button>
+        )}
 
         <button
           onClick={onOpen}

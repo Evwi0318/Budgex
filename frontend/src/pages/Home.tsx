@@ -1,22 +1,27 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroCard } from "../components/home/HeroCard";
 import { EntryRow } from "../components/home/EntryRow";
 import { EmptyState } from "../components/home/EmptyState";
+import { PaymentRow } from "../components/home/PaymentRow";
 import { EditEntryForm } from "../components/home/EditEntryForm";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { Fab } from "../components/ui/Fab";
+import { Toast } from "../components/ui/Toast";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
 import {
+  useAddEntryMutation,
   useDeleteEntryMutation,
   useSetPaidMutation,
+  useUpdateEntryMutation,
 } from "../hooks/useEntryMutation";
-import { getMonthName } from "../lib/format";
+import { formatKr, getMonthName } from "../lib/format";
 import { isPast } from "../lib/month";
 import type { EntryScope } from "../hooks/useEntryMutation";
+import type { ToastMessage } from "../components/ui/Toast";
 import type { MonthOutletContext } from "../components/layout/AppShell";
 import type { MonthPlan, PlannedEntry } from "../hooks/useMonthPlanQuery";
 
@@ -36,11 +41,16 @@ export function Home() {
   const { isClosed, isLocked, unlock, relock } = useMonthLock(year, month);
   const setPaid = useSetPaidMutation(year, month);
   const deleteEntry = useDeleteEntryMutation(year, month);
+  const updateEntry = useUpdateEntryMutation(year, month);
+  const addEntry = useAddEntryMutation(year, month);
 
   const [editing, setEditing] = useState<PlannedEntry | null>(null);
   const [editDirty, setEditDirty] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [removing, setRemoving] = useState<PlannedEntry | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [pendingAmount, setPendingAmount] = useState<AmountChange | null>(null);
+  const [refocusId, setRefocusId] = useState<string | null>(null);
 
   const closeEdit = () => {
     setEditing(null);
@@ -49,6 +59,40 @@ export function Home() {
   };
 
   const requestCloseEdit = () => (editDirty ? setDiscarding(true) : closeEdit());
+
+  const showToast = (text: string, onUndo: () => void) =>
+    setToast((previous) => ({ id: (previous?.id ?? 0) + 1, text, onUndo }));
+
+  const nounFor = (entry: PlannedEntry) =>
+    entry.kind === "Income" ? "Inkomsten" : "Utgiften";
+
+  const applyAmount = (entry: PlannedEntry, amount: number, scope: EntryScope) =>
+    updateEntry.mutate({
+      id: entry.id,
+      kind: entry.kind,
+      name: entry.name,
+      category: entry.category,
+      amount,
+      isAutogiro: entry.isAutogiro,
+      scope,
+    });
+
+  const changeAmount = (entry: PlannedEntry, amount: number, scope: EntryScope) => {
+    applyAmount(entry, amount, scope);
+    showToast(
+      `${nounFor(entry)} ${entry.name}: ${formatKr(entry.amount)} → ${formatKr(amount)}`,
+      () => applyAmount(entry, entry.amount, scope)
+    );
+  };
+
+  // Engangsposten lever i en manad, sa mallens belopp kan andras rakt av.
+  // Aterkommande poster maste fraga om omfattningen forst.
+  const handleAmountCommit = (entry: PlannedEntry, amount: number) =>
+    entry.repeats
+      ? setPendingAmount({ entry, amount })
+      : changeAmount(entry, amount, "Onwards");
+
+  const handleAmountRefocused = useCallback(() => setRefocusId(null), []);
 
   const requestRemove = (entry: PlannedEntry) => {
     closeEdit();
@@ -59,6 +103,16 @@ export function Home() {
     }
 
     deleteEntry.mutate({ id: entry.id, scope: "Onwards" });
+    showToast(`${nounFor(entry)} ${entry.name} togs bort`, () =>
+      addEntry.mutate({
+        kind: entry.kind,
+        name: entry.name,
+        category: entry.category,
+        amount: entry.amount,
+        isAutogiro: entry.isAutogiro,
+        repeats: false,
+      })
+    );
   };
 
   const confirmRemove = (scope: EntryScope) => {
@@ -142,6 +196,10 @@ export function Home() {
           </div>
         </header>
 
+        {view === "Expense" && (
+          <PaymentRow expenses={plan.expenses} monthName={monthName} />
+        )}
+
         {entries.length > 0 ? (
           entries.map((entry) => (
             <EntryRow
@@ -149,11 +207,14 @@ export function Home() {
               entry={entry}
               monthName={monthName}
               locked={isLocked}
+              refocusAmount={refocusId === entry.id}
               onOpen={() => !isLocked && setEditing(entry)}
               onDelete={() => requestRemove(entry)}
               onTogglePaid={() =>
                 setPaid.mutate({ id: entry.id, isPaid: !entry.isPaid })
               }
+              onAmountCommit={(amount) => handleAmountCommit(entry, amount)}
+              onAmountRefocused={handleAmountRefocused}
             />
           ))
         ) : (
@@ -193,6 +254,41 @@ export function Home() {
         onCancel={() => setDiscarding(false)}
       />
 
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
+
+      <ConfirmDialog
+        open={pendingAmount !== null}
+        title={
+          pendingAmount
+            ? `${formatKr(pendingAmount.entry.amount)} → ${formatKr(pendingAmount.amount)}`
+            : ""
+        }
+        body={
+          pendingAmount
+            ? `${nounFor(pendingAmount.entry)} ${pendingAmount.entry.name} återkommer varje månad.`
+            : ""
+        }
+        actions={[
+          { label: `Bara ${monthName} ${year}` },
+          { label: "Den här och kommande månader", tone: "alt" },
+        ]}
+        cancelLabel="Avbryt"
+        onPick={(index) => {
+          if (!pendingAmount) return;
+          changeAmount(
+            pendingAmount.entry,
+            pendingAmount.amount,
+            index === 0 ? "Month" : "Onwards"
+          );
+          setPendingAmount(null);
+        }}
+        onCancel={() => {
+          // Markoren tillbaka till beloppet man skrev i, med varde kvar
+          setRefocusId(pendingAmount?.entry.id ?? null);
+          setPendingAmount(null);
+        }}
+      />
+
       <ConfirmDialog
         open={removing !== null}
         title={`Ta bort ${removing?.name ?? ""}?`}
@@ -207,6 +303,11 @@ export function Home() {
       />
     </div>
   );
+}
+
+interface AmountChange {
+  entry: PlannedEntry;
+  amount: number;
 }
 
 interface EmptyProps {
