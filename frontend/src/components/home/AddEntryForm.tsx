@@ -80,7 +80,7 @@ export function AddEntryForm({
                   : "bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
               }`}
             >
-              <span className="text-[17px]">{option.emoji}</span>
+              <option.icon size={19} strokeWidth={2} />
               {option.label}
             </button>
           ))}
@@ -126,7 +126,7 @@ export function AddEntryForm({
 }
 
 export const Label = ({ children }: { children: string }) => (
-  <span className="mb-2 block text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+  <span className="mb-1.5 block text-[12px] font-medium text-[var(--color-text-muted)]">
     {children}
   </span>
 );

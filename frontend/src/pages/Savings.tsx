@@ -132,7 +132,7 @@ export function Savings() {
         )}
 
         <header className="mb-3 flex items-center gap-2 px-1">
-          <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.11em] text-[var(--color-text-muted)]">
+          <span className="shrink-0 text-[13.5px] font-bold tracking-[-0.015em] text-[var(--color-text)]">
             {showDone ? `Överfört i ${monthName}` : "Sparkonton"}
           </span>
 
@@ -152,7 +152,7 @@ export function Savings() {
           {isClosed && (
             <button
               onClick={isLocked ? unlock : relock}
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.04em] transition active:scale-95 ${
+              className={`rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition active:scale-95 ${
                 isLocked
                   ? "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
                   : "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
@@ -165,7 +165,7 @@ export function Savings() {
           {done.length > 0 && (
             <button
               onClick={() => setShowTransferred(!showDone)}
-              className={`flex h-[26px] items-center gap-1.5 rounded-full border px-[11px] text-[11px] font-extrabold uppercase tracking-[0.04em] transition active:scale-95 ${
+              className={`flex h-[26px] items-center gap-1.5 rounded-full border px-[11px] text-[11.5px] font-bold transition active:scale-95 ${
                 showDone
                   ? "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
                   : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"

@@ -9,7 +9,7 @@ export function Profile() {
       <h1 className="text-xl font-extrabold text-[var(--color-text)]">Profil</h1>
 
       <div>
-        <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-faint)]">
+        <p className="text-[12px] font-medium text-[var(--color-text-muted)]">
           Inloggad som
         </p>
         <p className="text-[15px] text-[var(--color-text)] mt-1">{userEmail}</p>

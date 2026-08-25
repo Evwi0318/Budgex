@@ -26,7 +26,7 @@ export function HeroCard({
         dimmed ? "opacity-70" : ""
       }`}
     >
-      <div className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+      <div className="text-center text-[12px] font-medium text-[var(--color-text-muted)]">
         {heading}
       </div>
 
@@ -86,7 +86,7 @@ function Tab({ label, amount, tone, underline, active, onClick }: TabProps) {
       aria-pressed={active}
       className="flex-1 pt-3 pb-2 text-center"
     >
-      <span className="block text-[9.5px] font-bold uppercase tracking-[0.11em] text-[var(--color-text-muted)]">
+      <span className="block text-[11.5px] font-medium text-[var(--color-text-muted)]">
         {label}
       </span>
       <span
