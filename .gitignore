@@ -18,6 +18,8 @@ dist/
 .env
 .env.*
 !.env.example
+# Playwrights testläge innehåller ingen hemlighet och behövs i CI
+!.env.e2e
 
 # OS & editor
 .DS_Store
