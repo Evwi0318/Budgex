@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
+import { useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroCard } from "../components/home/HeroCard";
 import { EntryRow } from "../components/home/EntryRow";
@@ -38,6 +39,8 @@ const kindOf = (tab: HomeTab) => (tab === "Income" ? "Income" : "Expense");
 
 export function Home() {
   const { year, month, tab, setTab, goToPrevMonth, goToNextMonth } = useMonth();
+  // Skalet äger scroll-ytan och säger till när kortet ska krympa
+  const { compact } = useOutletContext<{ compact: boolean }>();
 
   const { data: plan, isLoading } = useMonthPlanQuery(year, month);
   // En enda låsinstans för alla tre flikarna — samma månad kan inte vara
@@ -181,7 +184,13 @@ export function Home() {
         onNext={goToNextMonth}
       />
 
-      <HeroCard summary={plan.summary} tab={tab} onSelect={setTab} dimmed={isLocked} />
+      <HeroCard
+        summary={plan.summary}
+        tab={tab}
+        onSelect={setTab}
+        dimmed={isLocked}
+        compact={compact}
+      />
 
       {tab === "Savings" ? (
         <SavingsTab
@@ -251,6 +260,9 @@ export function Home() {
           )}
         </div>
       )}
+
+      {/* Ångra-fönstret täcker annars sista raden */}
+      {pending && <div aria-hidden style={{ height: "var(--toast-clearance)" }} />}
 
       <ProfileButton />
 

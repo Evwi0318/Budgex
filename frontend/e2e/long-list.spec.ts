@@ -17,11 +17,6 @@ test("sista raden i en lång lista går att öppna", async ({ page }) => {
 });
 
 test("sista raden ligger fritt från den flytande knappen", async ({ page }) => {
-  // Känd bugg: listan har 96 px botten-utrymme medan FAB:en tar 146 px. Fas 2
-  // ger listan rätt utrymme — ta bort raden nedan då, annars klagar Playwright
-  // på att testet lyckas fast det är märkt som fallerande.
-  test.fail();
-
   const last = page.getByRole("button", { name: `Öppna ${LAST}` }).locator("xpath=..");
   await last.scrollIntoViewIfNeeded();
 

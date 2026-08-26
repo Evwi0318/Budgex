@@ -29,11 +29,26 @@
     /* --- Typografi --- */
     --font-sans: "Rubik", ui-sans-serif, system-ui, sans-serif;
 
-    /* --- Hero-effekt (ENDAST på hero-talet) --- */
+    /* --- Hero-effekt --- */
+    /* Alpha ovanpå backdrop-filter, så raderna suddas när de glider in bakom */
     --gradient-hero-card: linear-gradient(160deg,
-            #1b2c22 0%,
-            #141a17 55%);
+            rgba(27, 44, 34, .82) 0%,
+            rgba(20, 26, 23, .84) 55%);
+    --blur-hero: blur(22px) saturate(160%);
+    --shadow-hero-compact: 0 10px 30px rgba(0, 0, 0, .55), 0 2px 10px rgba(0, 0, 0, .45);
+    --ease-hero: cubic-bezier(.2, .7, .3, 1);
     --glow-mint: rgba(110, 251, 155, 0.35);
+
+    /* --- Flytande knappar och listans botten-utrymme --- */
+    /* Utan bottennavigering sitter FAB:en lägre; listan behöver plats för
+       hela knappen plus luft, annars går sista raden inte att nå. */
+    --fab-size: 58px;
+    --fab-inset: 26px;
+    --list-bottom: calc(var(--fab-inset) + var(--fab-size) + 24px);
+    --toast-bottom: calc(var(--fab-inset) + var(--fab-size) + 12px);
+    /* Ångra-fönstret lägger sig över listans botten-utrymme, så listan
+       får just då lite extra att scrolla på */
+    --toast-clearance: 62px;
 
     /* --- Radie --- */
     --radius-chip: 12px;
@@ -54,18 +69,57 @@
         font-variant-numeric: tabular-nums;
     }
 
+    /* Vitt, inte mint: grönt betyder inkomst i resten av appen, och samma
+       färg på saldot gjorde att de lästes som samma sorts tal. */
     .hero-amount {
-        color: var(--color-mint);
+        color: var(--color-text);
+        font-size: 42px;
+        line-height: 46px;
+        transition: font-size .22s var(--ease-hero), line-height .22s var(--ease-hero);
     }
 
     .hero-amount--negative {
         color: var(--color-danger);
     }
 
-    /* Hero-kort bakgrund */
+    .hero-amount--compact {
+        font-size: 21px;
+        line-height: 26px;
+    }
+
+    /* Hero-kort: frostat glas, inte en solid yta */
     .hero-card {
         background-image: var(--gradient-hero-card);
+        backdrop-filter: var(--blur-hero);
+        -webkit-backdrop-filter: var(--blur-hero);
         border: 1px solid var(--color-border);
+        transition: box-shadow .22s var(--ease-hero), padding-top .22s var(--ease-hero);
+    }
+
+    .hero-card--compact {
+        box-shadow: var(--shadow-hero-compact);
+    }
+
+    /* max-height och opacity, aldrig display:none — annars hoppar kortet */
+    .hero-fade {
+        overflow: hidden;
+        max-height: 20px;
+        opacity: 1;
+        transition: max-height .22s var(--ease-hero), opacity .22s var(--ease-hero);
+    }
+
+    .hero-fade--gone {
+        max-height: 0;
+        opacity: 0;
+    }
+
+    .hero-tab-amount {
+        font-size: 17px;
+        transition: font-size .22s var(--ease-hero);
+    }
+
+    .hero-tab-amount--compact {
+        font-size: 13px;
     }
 
     /* Fokusring */
