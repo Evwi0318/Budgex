@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useApi } from "./useApi";
 
 export type RuleType = "Fixed" | "Percentage";
@@ -45,6 +45,7 @@ export function useSavingsQuery(year: number, month: number) {
   return useQuery({
     queryKey: ["savings", year, month],
     queryFn: () => request<SavingsMonth>(`/api/months/${year}/${month}/savings`),
+    placeholderData: keepPreviousData,
     retry: 1,
   });
 }
