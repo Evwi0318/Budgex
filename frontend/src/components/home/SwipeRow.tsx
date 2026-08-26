@@ -69,7 +69,7 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
           event.preventDefault();
           close();
         }}
-        className="swiper-no-swiping relative will-change-transform"
+        className="relative will-change-transform"
       >
         {children}
       </motion.div>

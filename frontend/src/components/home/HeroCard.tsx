@@ -2,21 +2,19 @@ import { motion } from "motion/react";
 import { HeroAmount } from "../ui/HeroAmount";
 import { formatKr } from "../../lib/format";
 import type { MonthSummary } from "../../hooks/useMonthPlanQuery";
-import type { EntryKind } from "../../lib/categories";
+import type { HomeTab } from "../../context/MonthContext";
 
 interface HeroCardProps {
   summary: MonthSummary;
-  view: EntryKind;
-  onSelect: (kind: EntryKind) => void;
-  onSavings: () => void;
+  tab: HomeTab;
+  onSelect: (tab: HomeTab) => void;
   dimmed?: boolean;
 }
 
 export function HeroCard({
   summary,
-  view,
+  tab,
   onSelect,
-  onSavings,
   dimmed = false,
 }: HeroCardProps) {
   const heading = summary.safeToSpend < 0 ? "Över budget" : "Kvar att spendera";
@@ -41,7 +39,7 @@ export function HeroCard({
           amount={summary.income}
           tone="text-[var(--color-mint)]"
           underline="bg-[var(--color-mint)]"
-          active={view === "Income"}
+          active={tab === "Income"}
           onClick={() => onSelect("Income")}
         />
         <Divider />
@@ -50,17 +48,17 @@ export function HeroCard({
           amount={summary.totalExpenses}
           tone="text-[var(--color-danger)]"
           underline="bg-[var(--color-danger)]"
-          active={view === "Expense"}
+          active={tab === "Expense"}
           onClick={() => onSelect("Expense")}
         />
         <Divider />
         <Tab
-          label="Sparande ›"
+          label="Sparande"
           amount={summary.totalSavings}
           tone="text-[var(--color-savings)]"
-          underline=""
-          active={false}
-          onClick={onSavings}
+          underline="bg-[var(--color-savings)]"
+          active={tab === "Savings"}
+          onClick={() => onSelect("Savings")}
         />
       </div>
     </div>
@@ -98,7 +96,7 @@ function Tab({ label, amount, tone, underline, active, onClick }: TabProps) {
         {formatKr(amount)}
       </span>
       <span className="relative mx-auto mt-2 block h-[3px] w-[34px]">
-        {active && underline && (
+        {active && (
           <motion.span
             layoutId="hero-tab-underline"
             transition={{ type: "spring", damping: 28, stiffness: 340 }}

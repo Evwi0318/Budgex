@@ -1,15 +1,19 @@
 import { createContext } from "react";
-import type { EntryKind } from "../lib/categories";
+
+/**
+ * Vilken flik som visas i hero-kortet. Sparande är inte en posttyp, så det
+ * här är ett UI-begrepp och avsiktligt skilt från domänens EntryKind — där
+ * en riktig EntryKind behövs härleds den, den lagras aldrig.
+ */
+export type HomeTab = "Income" | "Expense" | "Savings";
 
 export interface MonthContextValue {
   year: number;
   month: number;
-  view: EntryKind;
-  setView: (kind: EntryKind) => void;
+  tab: HomeTab;
+  setTab: (tab: HomeTab) => void;
   goToPrevMonth: () => void;
   goToNextMonth: () => void;
-  openAdd: () => void;
-  activePath: string;
 }
 
 // Egen fil utan komponenter, av samma skäl som AuthContext
