@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { UIEvent } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { MonthContext } from "../../context/MonthContext";
 import { currentMonth } from "../../lib/month";
@@ -13,6 +14,8 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [{ year, month }, setMonth] = useState(currentMonth);
+  const [scrolled, setScrolled] = useState(false);
+  const [compact, setCompact] = useState(false);
 
   // Gamla bokmärken på /savings ska landa på sparandefliken direkt, utan att
   // först blinka förbi utgifterna
@@ -32,6 +35,16 @@ export function AppShell() {
     });
   };
 
+  // Kortet krymper vid 24 px men växer inte tillbaka förrän vid 10. Utan
+  // glappet kan komprimeringen göra sidan så kort att den skrollar tillbaka
+  // över gränsen, och kortet börjar blinka.
+  const handleScroll = (event: UIEvent<HTMLElement>) => {
+    const top = event.currentTarget.scrollTop;
+
+    setScrolled(top > 8);
+    setCompact((was) => (was ? top > 10 : top > 24));
+  };
+
   const monthContext: MonthContextValue = {
     year,
     month,
@@ -43,14 +56,51 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--color-bg)]">
-      <div className="flex h-[100dvh] w-full max-w-[420px] flex-col bg-[var(--color-bg)]">
+      <div className="relative flex h-[100dvh] w-full max-w-[420px] flex-col bg-[var(--color-bg)]">
         <MonthContext.Provider value={monthContext}>
-          <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-            <div className="pb-24">
-              <Outlet />
+          {/*
+            overflow-anchor: none — när kortet krymper blir innehållet kortare,
+            och webbläsarens scroll-ankring drar då tillbaka scrollTop under
+            tröskeln igen. Kortet skulle börja pendla mellan lägena.
+          */}
+          <main
+            onScroll={handleScroll}
+            style={{ overflowAnchor: "none" }}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+          >
+            <div
+              style={{
+                paddingBottom: "calc(var(--list-bottom) + env(safe-area-inset-bottom))",
+              }}
+            >
+              <Outlet context={{ compact }} />
             </div>
           </main>
         </MonthContext.Provider>
+
+        {/*
+          Egna gradientlager, inte mask-image på scroll-ytan: en mask skapar en
+          grupp som slår ut backdrop-filter hos barnen, och då försvinner
+          glaset i hero-kortet. Ligger över raderna men under kortet (z-20).
+        */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 transition-opacity duration-200"
+          style={{
+            opacity: scrolled ? 1 : 0,
+            background:
+              "linear-gradient(to bottom, var(--color-bg) 35%, transparent 100%)",
+          }}
+        />
+
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24"
+          style={{
+            background:
+              "linear-gradient(to top, var(--color-bg) 30%, transparent 100%)",
+          }}
+        />
       </div>
     </div>
   );
