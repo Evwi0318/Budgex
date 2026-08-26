@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 export interface DialogAction {
   label: string;
@@ -43,7 +44,8 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  return (
+  // I body, av samma skäl som BottomSheet
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-6">
       <button
         aria-label="Stäng"
@@ -82,6 +84,7 @@ export function ConfirmDialog({
           </button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

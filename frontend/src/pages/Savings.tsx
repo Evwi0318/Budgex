@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { EmptyState } from "../components/home/EmptyState";
 import { SavingsRow } from "../components/savings/SavingsRow";
@@ -8,6 +7,7 @@ import { SavingsTopCard } from "../components/savings/SavingsTopCard";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { Fab } from "../components/ui/Fab";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { useMonth } from "../hooks/useMonth";
 import { useSavingsQuery } from "../hooks/useSavingsQuery";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
@@ -18,12 +18,10 @@ import {
 } from "../hooks/useSavingsMutation";
 import { formatNumber, getMonthName } from "../lib/format";
 import { isPast } from "../lib/month";
-import type { MonthOutletContext } from "../components/layout/AppShell";
 import type { SavingsAccount } from "../hooks/useSavingsQuery";
 
 export function Savings() {
-  const { year, month, goToPrevMonth, goToNextMonth } =
-    useOutletContext<MonthOutletContext>();
+  const { year, month, goToPrevMonth, goToNextMonth, activePath } = useMonth();
 
   const { data: savings, isLoading } = useSavingsQuery(year, month);
   const { data: plan } = useMonthPlanQuery(year, month);
@@ -210,7 +208,7 @@ export function Savings() {
         )}
       </div>
 
-      {!isLocked && (
+      {!isLocked && activePath === "/savings" && (
         <Fab onClick={() => setAdding(true)} label="Lägg till sparkonto" />
       )}
 

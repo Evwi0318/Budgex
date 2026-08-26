@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useApi } from "./useApi";
 import type { EntryKind } from "../lib/categories";
 
@@ -34,6 +34,8 @@ export function useMonthPlanQuery(year: number, month: number) {
   return useQuery({
     queryKey: ["month", year, month],
     queryFn: () => request<MonthPlan>(`/api/months/${year}/${month}/entries`),
+    // Förra månaden ligger kvar tills den nya svarat, annars blinkar skelettet
+    placeholderData: keepPreviousData,
     retry: 1,
   });
 }
