@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroCard } from "../components/home/HeroCard";
 import { EntryRow } from "../components/home/EntryRow";
+import { PaymentRow } from "../components/home/PaymentRow";
 import { EmptyState } from "../components/home/EmptyState";
 import { EditEntryForm } from "../components/home/EditEntryForm";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { Fab } from "../components/ui/Fab";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { UndoToast } from "../components/ui/UndoToast";
+import { useMonth } from "../hooks/useMonth";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
 import {
@@ -19,7 +21,6 @@ import {
 import { getMonthName } from "../lib/format";
 import { isPast } from "../lib/month";
 import type { EntryScope } from "../hooks/useEntryMutation";
-import type { MonthOutletContext } from "../components/layout/AppShell";
 import type { MonthPlan, PlannedEntry } from "../hooks/useMonthPlanQuery";
 
 const UNDO_MS = 5000;
@@ -38,7 +39,8 @@ export function Home() {
     goToPrevMonth,
     goToNextMonth,
     openAdd,
-  } = useOutletContext<MonthOutletContext>();
+    activePath,
+  } = useMonth();
   const navigate = useNavigate();
 
   const { data: plan, isLoading } = useMonthPlanQuery(year, month);
@@ -203,6 +205,10 @@ export function Home() {
           </div>
         </header>
 
+        {view === "Expense" && (
+          <PaymentRow expenses={entries} monthName={monthName} />
+        )}
+
         <AnimatePresence initial={false}>
           {entries.map((entry) => (
             <EntryRow
@@ -224,7 +230,7 @@ export function Home() {
         )}
       </div>
 
-      {!isLocked && (
+      {!isLocked && activePath === "/" && (
         <Fab
           onClick={openAdd}
           label={view === "Income" ? "Lägg till inkomst" : "Lägg till utgift"}
@@ -307,7 +313,7 @@ function Empty({ plan, view, monthName, closed }: EmptyProps) {
         emoji="👋"
         title="Välkommen till Budgex"
         body="Börja med din inkomst — då vet appen hur mycket du har att röra dig med. Utgifterna lägger du till efteråt."
-        footnote="Tryck på + nere till höger för att lägga till."
+        footnote="Tryck på + nere i mitten för att lägga till."
       />
     );
   }

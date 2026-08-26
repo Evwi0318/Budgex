@@ -38,7 +38,7 @@ export function MonthNav({
         else if (back) onPrev();
       }}
       style={{ touchAction: "pan-y" }}
-      className="flex touch-pan-y items-center justify-center gap-3.5 px-5 pt-1 pb-3 select-none"
+      className="swiper-no-swiping flex touch-pan-y items-center justify-center gap-3.5 px-5 pt-1 pb-3 select-none"
     >
       <Arrow onClick={onPrev} label="Föregående månad">
         <ChevronLeft size={18} />

@@ -2,9 +2,6 @@ import { createBrowserRouter } from "react-router-dom";
 import { Login } from "./components/Login";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { AppShell } from "./components/layout/AppShell";
-import { Home } from "./pages/Home";
-import { Savings } from "./pages/Savings";
-import { Profile } from "./pages/Profile";
 
 export const router = createBrowserRouter([
   {
@@ -13,7 +10,9 @@ export const router = createBrowserRouter([
   },
   {
     // Allt under "/" ligger bakom inloggning och delar samma skal
-    // med toppbar och bottennavigering
+    // med toppbar och bottennavigering. Barnrutterna renderar inget själva
+    // — de finns för att adressen ska matcha, sidorna ligger som slides
+    // i AppShell så att de går att svepa emellan.
     path: "/",
     element: (
       <PrivateRoute>
@@ -21,9 +20,9 @@ export const router = createBrowserRouter([
       </PrivateRoute>
     ),
     children: [
-      { index: true, element: <Home /> },
-      { path: "savings", element: <Savings /> },
-      { path: "profile", element: <Profile /> },
+      { index: true, element: <></> },
+      { path: "savings", element: <></> },
+      { path: "profile", element: <></> },
     ],
   },
 ]);
