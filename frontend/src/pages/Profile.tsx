@@ -1,6 +1,15 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import type { ComponentType, ReactNode } from "react";
-import { ChevronRight, IdCard, KeyRound, LogOut, Mail, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  IdCard,
+  KeyRound,
+  LogOut,
+  Mail,
+  Trash2,
+} from "lucide-react";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { NameForm } from "../components/profile/NameForm";
@@ -26,7 +35,16 @@ export function Profile() {
 
   return (
     <div className="px-4 py-6">
-      <h1 className="mb-6 text-xl font-extrabold">Profil</h1>
+      <div className="mb-6 flex items-center gap-2">
+        <Link
+          to="/"
+          aria-label="Tillbaka"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--color-text-muted)] transition active:scale-95"
+        >
+          <ChevronLeft size={22} />
+        </Link>
+        <h1 className="text-xl font-extrabold">Profil</h1>
+      </div>
 
       <div className="mb-7 flex items-center gap-3.5">
         <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-[1.5px] border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[19px] font-bold tracking-tight text-[var(--color-mint)]">

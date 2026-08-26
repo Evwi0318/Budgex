@@ -313,18 +313,13 @@ export const openExpenses = (page: Page) =>
 export const openIncome = (page: Page) =>
   page.getByRole("button", { name: /^Inkomst/ }).click();
 
-/**
- * Enda stället som vet HUR man når sparandet. I fas 1 blir det en flik i
- * hero-kortet i stället för en knapp i bottenmenyn — byt raden här, inget
- * testfall ska behöva röras.
- */
+/** Enda stället som vet HUR man når sparandet — numera en flik i hero-kortet */
 export const openSavings = (page: Page) =>
-  page.getByRole("navigation").getByRole("button", { name: "Sparande" }).click();
+  page.getByRole("button", { name: /^Sparande/ }).click();
 
 /**
- * Raden runt en post. Alla tre sidorna ligger i DOM:en samtidigt så länge
- * Swiper finns kvar, så selektorer måste utgå från namnet och inte från
- * ordningen.
+ * Raden runt en post. Selektorn utgår från namnet och inte från ordningen,
+ * så den håller även när listan filtreras om.
  */
 export const entryRow = (page: Page, name: string) =>
   page.getByRole("button", { name: `Öppna ${name}` }).locator("xpath=..");
@@ -343,12 +338,11 @@ export const paymentRow = (page: Page) =>
 export const dialog = (page: Page, text: string | RegExp) =>
   page.getByRole("dialog").filter({ hasText: text });
 
-/** Två MonthNav ligger i DOM:en så länge sidorna är slides; ta den första */
 export const prevMonth = (page: Page) =>
-  page.getByRole("button", { name: "Föregående månad" }).first();
+  page.getByRole("button", { name: "Föregående månad" });
 
 export const nextMonth = (page: Page) =>
-  page.getByRole("button", { name: "Nästa månad" }).first();
+  page.getByRole("button", { name: "Nästa månad" });
 
 export const fab = (page: Page, label: string) =>
   page.getByRole("button", { name: label });
