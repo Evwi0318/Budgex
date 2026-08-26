@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 
 interface UndoToastProps {
@@ -6,7 +7,8 @@ interface UndoToastProps {
 }
 
 export function UndoToast({ message, onUndo }: UndoToastProps) {
-  return (
+  // I body, och 158px upp: ovanför både bottennavigeringen och plusknappen
+  return createPortal(
     <AnimatePresence>
       {message && (
         <motion.div
@@ -15,8 +17,8 @@ export function UndoToast({ message, onUndo }: UndoToastProps) {
           exit={{ opacity: 0, y: 16 }}
           transition={{ type: "spring", damping: 28, stiffness: 340 }}
           role="status"
-          className="fixed inset-x-0 bottom-[88px] z-40 mx-auto flex w-[calc(100%-2rem)] max-w-[400px] items-center gap-4 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3.5 text-[14px] font-bold will-change-transform"
-          style={{ bottom: "calc(88px + env(safe-area-inset-bottom))" }}
+          className="fixed inset-x-0 z-40 mx-auto flex w-[calc(100%-2rem)] max-w-[400px] items-center gap-4 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3.5 text-[14px] font-bold will-change-transform"
+          style={{ bottom: "calc(158px + env(safe-area-inset-bottom))" }}
         >
           <span className="min-w-0 flex-1 truncate">{message}</span>
 
@@ -28,6 +30,7 @@ export function UndoToast({ message, onUndo }: UndoToastProps) {
           </button>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

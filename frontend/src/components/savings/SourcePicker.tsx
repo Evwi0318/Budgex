@@ -136,7 +136,7 @@ export function SourcePicker({
                     onChange={(event) =>
                       set(income.id, { ...draft, value: Number(event.target.value) })
                     }
-                    className="mt-3 w-full accent-[var(--color-mint)]"
+                    className="mt-3 w-full touch-none accent-[var(--color-mint)]"
                   />
                 )}
 

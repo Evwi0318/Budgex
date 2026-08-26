@@ -97,7 +97,7 @@ export function SavingsForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-5 overflow-y-auto">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <h2 className="text-[18px] font-extrabold">
         {account ? "Redigera sparkonto" : "Nytt sparkonto"}
       </h2>
