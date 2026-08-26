@@ -20,7 +20,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 mx-auto max-w-[480px] h-16 bg-[var(--color-surface)] rounded-t-[var(--radius-hero)] flex items-center justify-around px-2"
+      className="fixed bottom-0 left-0 right-0 z-10 mx-auto max-w-[480px] h-16 bg-[var(--color-surface)] rounded-t-[var(--radius-hero)] flex items-center justify-around px-2"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {navItems.map((item) => {
