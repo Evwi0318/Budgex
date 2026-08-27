@@ -88,8 +88,8 @@
     }
 
     .hero-amount--compact {
-        font-size: 21px;
-        line-height: 26px;
+        font-size: 26px;
+        line-height: 30px;
     }
 
     /* Hero-kort: frostat glas, inte en solid yta */
@@ -124,7 +124,7 @@
     }
 
     .hero-tab-amount--compact {
-        font-size: 13px;
+        font-size: 15px;
     }
 
     /* Fokusring */

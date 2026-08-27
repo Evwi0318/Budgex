@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { animate, motion, useMotionValue } from "motion/react";
+import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import type { ReactNode } from "react";
 
 const REVEAL = 88;
@@ -17,6 +17,11 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
   const x = useMotionValue(0);
   const [open, setOpen] = useState(false);
 
+  // Klippningen av rundade hörn görs på kompositorn och kan ligga en pixel
+  // fel när barnet har ett eget lager. Röda ytan hålls därför helt osynlig
+  // tills raden faktiskt rört sig.
+  const revealed = useTransform(x, (value) => (value < -0.5 ? 1 : 0));
+
   const close = () => {
     animate(x, 0, SPRING);
     setOpen(false);
@@ -25,23 +30,25 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
   return (
     <motion.div
       layout
+      data-no-tab-swipe
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
       transition={{ type: "spring", damping: 34, stiffness: 420 }}
-      className="relative mb-2 overflow-hidden rounded-[var(--radius-card)]"
+      className="relative isolate mb-2 overflow-hidden rounded-[var(--radius-card)]"
     >
-      <button
+      <motion.button
         onClick={() => {
           close();
           onDelete();
         }}
         tabIndex={open ? 0 : -1}
         aria-hidden={!open}
-        className="absolute inset-y-0 right-0 grid w-[88px] place-items-center rounded-[var(--radius-card)] bg-[var(--color-danger)] text-[13px] font-extrabold text-[#3a0d0d]"
+        style={{ opacity: revealed }}
+        className="absolute inset-y-0 right-0 grid w-[88px] place-items-center bg-[var(--color-danger)] text-[13px] font-extrabold text-[#3a0d0d]"
       >
         Ta bort
-      </button>
+      </motion.button>
 
       <motion.div
         drag={disabled ? false : "x"}

@@ -26,6 +26,7 @@ export function MonthNav({
 
   return (
     <motion.div
+      data-no-tab-swipe
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.12}

@@ -1,12 +1,12 @@
-import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfileQuery } from "../../hooks/useProfileQuery";
 import { initials } from "../../lib/initials";
 
 /**
- * Enda vägen till profilen sedan bottenmenyn togs bort. Ligger i body av
- * samma skäl som Fab, och är lika stor som den så att de läser som ett par.
+ * Enda vägen till profilen sedan bottenmenyn togs bort. Absolut mot
+ * appbehållaren precis som Fab, med samma kantavstånd som listans marginal,
+ * och lika stor som Fab så att de läser som ett par.
  */
 export function ProfileButton() {
   const { userEmail } = useAuth();
@@ -14,7 +14,7 @@ export function ProfileButton() {
 
   const email = profile?.email ?? userEmail ?? "";
 
-  return createPortal(
+  return (
     <Link
       to="/profile"
       aria-label="Profil"
@@ -24,10 +24,9 @@ export function ProfileButton() {
         height: "var(--fab-size)",
         width: "var(--fab-size)",
       }}
-      className="fixed right-4 z-50 grid place-items-center rounded-full border-[1.5px] border-[var(--color-mint-dim)] bg-[var(--color-surface)] text-[17px] font-bold tracking-tight text-[var(--color-mint)] shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition active:scale-95"
+      className="absolute right-4 z-50 grid place-items-center rounded-full border-[1.5px] border-[var(--color-mint-dim)] bg-[var(--color-surface)] text-[17px] font-bold tracking-tight text-[var(--color-mint)] shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition active:scale-95"
     >
       {initials(profile?.name ?? null, email)}
-    </Link>,
-    document.body
+    </Link>
   );
 }

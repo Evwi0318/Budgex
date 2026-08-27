@@ -37,7 +37,7 @@ test("kortet komprimeras vid scroll och växer tillbaka", async ({ page }) => {
   await scrollTo(page, 200);
   await page.waitForTimeout(400);
 
-  expect(await fontSize(page)).toBeCloseTo(21, 0);
+  expect(await fontSize(page)).toBeCloseTo(26, 0);
   // Texten tonas ut, men tas aldrig ur flödet
   await expect(page.getByText("Kvar att spendera")).not.toBeVisible();
 
@@ -78,7 +78,7 @@ test("en låst månad ser låst ut även komprimerad", async ({ page }) => {
   await scrollTo(page, 200);
   await page.waitForTimeout(400);
 
-  expect(await fontSize(page)).toBeCloseTo(21, 0);
+  expect(await fontSize(page)).toBeCloseTo(26, 0);
   await expect(page.getByRole("button", { name: "Lägg till utgift" })).toHaveCount(0);
 
   const dimmed = await page
@@ -98,10 +98,10 @@ test("kortet pendlar inte när det komprimeras strax över tröskeln", async ({
 
   const settled = await page.locator("main").evaluate((el) => el.scrollTop);
   expect(settled).toBe(40);
-  expect(await fontSize(page)).toBeCloseTo(21, 0);
+  expect(await fontSize(page)).toBeCloseTo(26, 0);
 
   await page.waitForTimeout(600);
 
   expect(await page.locator("main").evaluate((el) => el.scrollTop)).toBe(40);
-  expect(await fontSize(page)).toBeCloseTo(21, 0);
+  expect(await fontSize(page)).toBeCloseTo(26, 0);
 });
