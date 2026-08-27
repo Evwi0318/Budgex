@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import type { ReactNode } from "react";
 
@@ -15,17 +14,11 @@ interface SwipeRowProps {
 
 export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps) {
   const x = useMotionValue(0);
-  const [open, setOpen] = useState(false);
 
   // Klippningen av rundade hörn görs på kompositorn och kan ligga en pixel
   // fel när barnet har ett eget lager. Röda ytan hålls därför helt osynlig
   // tills raden faktiskt rört sig.
   const revealed = useTransform(x, (value) => (value < -0.5 ? 1 : 0));
-
-  const close = () => {
-    animate(x, 0, SPRING);
-    setOpen(false);
-  };
 
   return (
     <motion.div
@@ -37,18 +30,15 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
       transition={{ type: "spring", damping: 34, stiffness: 420 }}
       className="relative isolate mb-2 overflow-hidden rounded-[var(--radius-card)]"
     >
-      <motion.button
-        onClick={() => {
-          close();
-          onDelete();
-        }}
-        tabIndex={open ? 0 : -1}
-        aria-hidden={!open}
+      {/* Ren feedback under draget — ingen klickbar knapp. Radering sker
+          bara genom att dra förbi tröskeln; annars studsar raden tillbaka. */}
+      <motion.div
+        aria-hidden
         style={{ opacity: revealed }}
         className="absolute inset-y-0 right-0 grid w-[88px] place-items-center bg-[var(--color-danger)] text-[13px] font-extrabold text-[#3a0d0d]"
       >
         Ta bort
-      </motion.button>
+      </motion.div>
 
       <motion.div
         drag={disabled ? false : "x"}
@@ -60,21 +50,11 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
           const full =
             info.offset.x < -FULL_SWIPE || info.velocity.x < -FULL_SWIPE_VELOCITY;
 
-          if (full) {
-            onDelete();
-            return;
-          }
-
-          const shouldOpen = info.offset.x < -REVEAL / 2;
-
-          animate(x, shouldOpen ? -REVEAL : 0, SPRING);
-          setOpen(shouldOpen);
-        }}
-        onClickCapture={(event) => {
-          if (!open) return;
-          event.stopPropagation();
-          event.preventDefault();
-          close();
+          // Raden går alltid tillbaka till utgångsläget. Har du dragit förbi
+          // tröskeln raderar vi också — men studsen ska ändå ske, t.ex. om
+          // posten är återkommande och en bekräftelsedialog tar över.
+          animate(x, 0, SPRING);
+          if (full) onDelete();
         }}
         className="relative will-change-transform"
       >

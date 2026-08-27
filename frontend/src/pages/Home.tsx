@@ -64,6 +64,7 @@ export function Home() {
   const [editDirty, setEditDirty] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [removing, setRemoving] = useState<PlannedEntry | null>(null);
+  const [showPaid, setShowPaid] = useState(false);
   const [pending, setPending] = useState<PendingDelete | null>(null);
   const pendingRef = useRef<PendingDelete | null>(null);
   const timer = useRef<number | null>(null);
@@ -76,6 +77,11 @@ export function Home() {
   const startSwipe = (event: ReactPointerEvent) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if ((event.target as Element).closest("[data-no-tab-swipe]")) return;
+
+    // Ark och dialoger ligger i en portal på <body>, men React låter deras
+    // pointer-event bubbla hit ändå. Fråga DOM:en direkt så att ett svep i
+    // ett öppet ark inte byter hero-flik.
+    if (document.querySelector('[aria-modal="true"]')) return;
 
     swipe.current = { x: event.clientX, y: event.clientY, axis: "" };
   };
@@ -209,9 +215,25 @@ export function Home() {
   }
 
   const monthName = getMonthName(month);
-  const entries = (tab === "Income" ? plan.income : plan.expenses).filter(
-    (entry) => entry.id !== pending?.entry.id,
-  );
+
+  const incomeEntries = plan.income.filter((e) => e.id !== pending?.entry.id);
+  const expenseEntries = plan.expenses.filter((e) => e.id !== pending?.entry.id);
+
+  // Manuellt ibockade utgifter göms i en egen bubbla. Autogiro räknas alltid
+  // som betalt men ligger kvar i listan — det är inget du bockar av.
+  const paidExpenses = expenseEntries.filter((e) => !e.isAutogiro && e.isPaid);
+  const openExpenses = expenseEntries.filter((e) => e.isAutogiro || !e.isPaid);
+  const showPaidList =
+    tab === "Expense" && showPaid && paidExpenses.length > 0;
+
+  const entries =
+    tab === "Income" ? incomeEntries : showPaidList ? paidExpenses : openExpenses;
+
+  // Tomt-läget styrs av om månaden har poster alls, inte av den synliga
+  // listan — annars visas välkomsttexten när allt är betalt.
+  const listIsEmpty =
+    (tab === "Income" ? incomeEntries : expenseEntries).length === 0;
+
   const removingNoun = removing?.kind === "Income" ? "Inkomsten" : "Utgiften";
 
   return (
@@ -222,8 +244,9 @@ export function Home() {
       onPointerCancel={() => (swipe.current = null)}
       style={{ touchAction: "pan-y" }}
       // Utan select-none börjar ett svep markera text i stället, och nästa
-      // svep över markeringen startar ett inbyggt drag som äter pointerup
-      className="select-none"
+      // svep över markeringen startar ett inbyggt drag som äter pointerup.
+      // flex-1: fyll skalets höjd så svep på tom yta under korten fångas.
+      className="flex-1 select-none"
     >
       <MonthNav
         year={year}
@@ -261,7 +284,11 @@ export function Home() {
           <div className="px-4 pt-5">
             <header className="mb-2.5 flex items-center gap-2.5 px-1">
               <span className="text-[13.5px] font-bold tracking-[-0.015em] text-[var(--color-text)]">
-                {tab === "Income" ? "Inkomst" : "Utgifter"}
+                {tab === "Income"
+                  ? "Inkomst"
+                  : showPaidList
+                    ? `Betalda i ${monthName}`
+                    : "Utgifter"}
               </span>
 
               <span
@@ -289,11 +316,26 @@ export function Home() {
                       : "🔓 Upplåst — lås igen"}
                   </button>
                 )}
+
+                {tab === "Expense" && paidExpenses.length > 0 && (
+                  <button
+                    onClick={() => setShowPaid(!showPaidList)}
+                    className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-full border px-[11px] text-[11.5px] font-bold transition active:scale-95 ${
+                      showPaidList
+                        ? "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
+                        : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
+                    }`}
+                  >
+                    {showPaidList
+                      ? `‹ ${openExpenses.length} kvar`
+                      : `✓ ${paidExpenses.length} betalda`}
+                  </button>
+                )}
               </div>
             </header>
 
-            {tab === "Expense" && (
-              <PaymentRow expenses={entries} monthName={monthName} />
+            {tab === "Expense" && !showPaidList && (
+              <PaymentRow expenses={openExpenses} monthName={monthName} />
             )}
 
             <AnimatePresence initial={false}>
@@ -312,7 +354,7 @@ export function Home() {
               ))}
             </AnimatePresence>
 
-            {entries.length === 0 && (
+            {listIsEmpty && (
               <Empty
                 plan={plan}
                 tab={tab}

@@ -68,10 +68,15 @@ export function AppShell() {
             style={{ overflowAnchor: "none" }}
             className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
           >
+            {/*
+              flex-kolumn i full höjd: barnet (Home) kan då växa till hela
+              ytan även när innehållet är kort, så svep på tom yta fångas.
+            */}
             <div
               style={{
                 paddingBottom: "calc(var(--list-bottom) + env(safe-area-inset-bottom))",
               }}
+              className="flex min-h-full flex-col"
             >
               <Outlet context={{ compact }} />
             </div>
