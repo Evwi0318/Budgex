@@ -1,4 +1,3 @@
-import { createPortal } from "react-dom";
 import type { HomeTab } from "../../context/MonthContext";
 
 interface FabProps {
@@ -34,8 +33,9 @@ const LOOK = {
 export function Fab({ tab, onClick }: FabProps) {
   const look = LOOK[tab];
 
-  // I body: fixed inuti den scrollande listan mäts mot listan, inte skärmen
-  return createPortal(
+  // Absolut mot appbehållaren, inte mot fönstret: annars hamnar knapparna
+  // i skärmens kant i stället för appens när det finns plats bredvid.
+  return (
     <button
       onClick={onClick}
       title={look.aria}
@@ -49,11 +49,10 @@ export function Fab({ tab, onClick }: FabProps) {
         transition:
           "background-color .22s var(--ease-hero), color .22s var(--ease-hero), box-shadow .22s var(--ease-hero)",
       }}
-      className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-5 text-[16px] font-extrabold active:scale-95"
+      className="absolute left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-5 text-[16px] font-extrabold active:scale-95"
     >
       <span className="text-[22px] leading-none font-bold">+</span>
       {look.label}
-    </button>,
-    document.body
+    </button>
   );
 }

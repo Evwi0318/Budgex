@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence } from "motion/react";
+import type { PointerEvent as ReactPointerEvent } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroCard } from "../components/home/HeroCard";
@@ -37,6 +38,12 @@ interface PendingDelete {
 /** Sparande är ingen posttyp — där behövs en riktig EntryKind härleds den */
 const kindOf = (tab: HomeTab) => (tab === "Income" ? "Income" : "Expense");
 
+/** Ordningen i hero-kortet, och därmed svepets ordning */
+const TABS: HomeTab[] = ["Income", "Expense", "Savings"];
+
+const AXIS_LOCK = 10;
+const SWIPE_DISTANCE = 50;
+
 export function Home() {
   const { year, month, tab, setTab, goToPrevMonth, goToNextMonth } = useMonth();
   // Skalet äger scroll-ytan och säger till när kortet ska krympa
@@ -57,9 +64,51 @@ export function Home() {
   const [editDirty, setEditDirty] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [removing, setRemoving] = useState<PlannedEntry | null>(null);
+  const [showPaid, setShowPaid] = useState(false);
   const [pending, setPending] = useState<PendingDelete | null>(null);
   const pendingRef = useRef<PendingDelete | null>(null);
   const timer = useRef<number | null>(null);
+  const swipe = useRef<{ x: number; y: number; axis: "" | "x" | "y" } | null>(
+    null,
+  );
+
+  // Riktningen låses vid första rörelsen: vågrätt byter flik, lodrätt
+  // scrollar. Rader och månadsraden har egna gester och hoppas över.
+  const startSwipe = (event: ReactPointerEvent) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if ((event.target as Element).closest("[data-no-tab-swipe]")) return;
+
+    // Ark och dialoger ligger i en portal på <body>, men React låter deras
+    // pointer-event bubbla hit ändå. Fråga DOM:en direkt så att ett svep i
+    // ett öppet ark inte byter hero-flik.
+    if (document.querySelector('[aria-modal="true"]')) return;
+
+    swipe.current = { x: event.clientX, y: event.clientY, axis: "" };
+  };
+
+  const trackSwipe = (event: ReactPointerEvent) => {
+    const start = swipe.current;
+    if (!start || start.axis !== "") return;
+
+    const dx = Math.abs(event.clientX - start.x);
+    const dy = Math.abs(event.clientY - start.y);
+
+    if (dx < AXIS_LOCK && dy < AXIS_LOCK) return;
+    start.axis = dx > dy ? "x" : "y";
+  };
+
+  const endSwipe = (event: ReactPointerEvent) => {
+    const start = swipe.current;
+    swipe.current = null;
+
+    if (!start || start.axis !== "x") return;
+
+    const dx = event.clientX - start.x;
+    if (Math.abs(dx) < SWIPE_DISTANCE) return;
+
+    const next = TABS.indexOf(tab) + (dx < 0 ? 1 : -1);
+    if (next >= 0 && next < TABS.length) setTab(TABS[next]);
+  };
 
   const closeAdd = () => {
     setAdding(false);
@@ -67,7 +116,8 @@ export function Home() {
     setAddDiscarding(false);
   };
 
-  const requestCloseAdd = () => (addDirty ? setAddDiscarding(true) : closeAdd());
+  const requestCloseAdd = () =>
+    addDirty ? setAddDiscarding(true) : closeAdd();
 
   const closeEdit = () => {
     setEditing(null);
@@ -75,7 +125,8 @@ export function Home() {
     setDiscarding(false);
   };
 
-  const requestCloseEdit = () => (editDirty ? setDiscarding(true) : closeEdit());
+  const requestCloseEdit = () =>
+    editDirty ? setDiscarding(true) : closeEdit();
 
   // Raderingen skickas först när ångra-fönstret runnit ut. Utan fördröjningen
   // skulle "Ångra" behöva skapa posten på nytt, och den skulle få nytt id.
@@ -112,16 +163,18 @@ export function Home() {
     setPending(null);
   };
 
-  useEffect(() => () => {
-    if (timer.current === null) return;
+  useEffect(() => {
+    return () => {
+      if (timer.current === null) return;
 
-    window.clearTimeout(timer.current);
-    if (pendingRef.current) {
-      deleteEntry.mutate({
-        id: pendingRef.current.entry.id,
-        scope: pendingRef.current.scope,
-      });
-    }
+      window.clearTimeout(timer.current);
+      if (pendingRef.current) {
+        deleteEntry.mutate({
+          id: pendingRef.current.entry.id,
+          scope: pendingRef.current.scope,
+        });
+      }
+    };
     // deleteEntry byter identitet vid varje render, men muteringen är stabil
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -162,13 +215,47 @@ export function Home() {
   }
 
   const monthName = getMonthName(month);
-  const entries = (tab === "Income" ? plan.income : plan.expenses).filter(
-    (entry) => entry.id !== pending?.entry.id
-  );
+
+  const incomeEntries = plan.income.filter((e) => e.id !== pending?.entry.id);
+  const expenseEntries = plan.expenses.filter((e) => e.id !== pending?.entry.id);
+
+  // Manuellt ibockade utgifter göms i en egen bubbla. Autogiro räknas alltid
+  // som betalt men ligger kvar i listan — det är inget du bockar av.
+  const paidExpenses = expenseEntries.filter((e) => !e.isAutogiro && e.isPaid);
+  const openExpenses = expenseEntries.filter((e) => e.isAutogiro || !e.isPaid);
+  const showPaidList =
+    tab === "Expense" && showPaid && paidExpenses.length > 0;
+
+  // Varje manuell utgift avbockad → tydlig kvittobanner i stället för
+  // "N kvar"-raden, precis som sparande-fliken vid allt överfört.
+  const allManualPaid =
+    tab === "Expense" &&
+    !showPaidList &&
+    paidExpenses.length > 0 &&
+    openExpenses.every((e) => e.isAutogiro);
+
+  const entries =
+    tab === "Income" ? incomeEntries : showPaidList ? paidExpenses : openExpenses;
+
+  // Tomt-läget styrs av om månaden har poster alls, inte av den synliga
+  // listan — annars visas välkomsttexten när allt är betalt.
+  const listIsEmpty =
+    (tab === "Income" ? incomeEntries : expenseEntries).length === 0;
+
   const removingNoun = removing?.kind === "Income" ? "Inkomsten" : "Utgiften";
 
   return (
-    <div>
+    <div
+      onPointerDown={startSwipe}
+      onPointerMove={trackSwipe}
+      onPointerUp={endSwipe}
+      onPointerCancel={() => (swipe.current = null)}
+      style={{ touchAction: "pan-y" }}
+      // Utan select-none börjar ett svep markera text i stället, och nästa
+      // svep över markeringen startar ett inbyggt drag som äter pointerup.
+      // flex-1: fyll skalets höjd så svep på tom yta under korten fångas.
+      className="flex-1 select-none"
+    >
       <MonthNav
         year={year}
         month={month}
@@ -185,84 +272,127 @@ export function Home() {
         compact={compact}
       />
 
-      {tab === "Savings" ? (
-        <SavingsTab
-          plan={plan}
-          isClosed={isClosed}
-          isLocked={isLocked}
-          unlock={unlock}
-          relock={relock}
-          adding={addingSavings}
-          onCloseAdding={() => setAddingSavings(false)}
-        />
-      ) : (
-        <div className="px-4 pt-5">
-          <header className="mb-2.5 flex items-center gap-2.5 px-1">
-            <span className="text-[13.5px] font-bold tracking-[-0.015em] text-[var(--color-text)]">
-              {tab === "Income" ? "Inkomst" : "Utgifter"}
-            </span>
+      <motion.div
+        key={tab}
+        initial={{ opacity: 0, filter: "blur(6px)" }}
+        animate={{ opacity: 1, filter: "blur(0px)" }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+      >
+        {tab === "Savings" ? (
+          <SavingsTab
+            plan={plan}
+            isClosed={isClosed}
+            isLocked={isLocked}
+            unlock={unlock}
+            relock={relock}
+            adding={addingSavings}
+            onCloseAdding={() => setAddingSavings(false)}
+          />
+        ) : (
+          <div className="px-4 pt-5">
+            <header className="mb-2.5 flex items-center gap-2.5 px-1">
+              <span className="text-[13.5px] font-bold tracking-[-0.015em] text-[var(--color-text)]">
+                {tab === "Income"
+                  ? "Inkomst"
+                  : showPaidList
+                    ? `Betalda i ${monthName}`
+                    : "Utgifter"}
+              </span>
 
-            <span
-              className={`grid h-[21px] min-w-[21px] place-items-center rounded-full px-1.5 text-[11.5px] font-extrabold ${
-                tab === "Income"
-                  ? "bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
-                  : "bg-[var(--color-danger-wash)] text-[var(--color-danger)]"
-              }`}
-            >
-              {entries.length}
-            </span>
+              <span
+                className={`grid h-[21px] min-w-[21px] place-items-center rounded-full px-1.5 text-[11.5px] font-extrabold ${
+                  tab === "Income"
+                    ? "bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
+                    : "bg-[var(--color-danger-wash)] text-[var(--color-danger)]"
+                }`}
+              >
+                {entries.length}
+              </span>
 
-            <div className="ml-auto flex items-center gap-2">
-              {isClosed && (
-                <button
-                  onClick={isLocked ? unlock : relock}
-                  className={`rounded-full border px-2.5 py-1.5 text-[12.5px] font-extrabold transition active:scale-95 ${
-                    isLocked
-                      ? "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]"
-                      : "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
-                  }`}
-                >
-                  {isLocked ? "🔒 Avslutad — lås upp" : "🔓 Upplåst — lås igen"}
-                </button>
-              )}
-            </div>
-          </header>
+              <div className="ml-auto flex items-center gap-2">
+                {isClosed && (
+                  <button
+                    onClick={isLocked ? unlock : relock}
+                    className={`rounded-full border px-2.5 py-1.5 text-[12.5px] font-extrabold transition active:scale-95 ${
+                      isLocked
+                        ? "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]"
+                        : "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
+                    }`}
+                  >
+                    {isLocked
+                      ? "🔒 Avslutad — lås upp"
+                      : "🔓 Upplåst — lås igen"}
+                  </button>
+                )}
 
-          {tab === "Expense" && (
-            <PaymentRow expenses={entries} monthName={monthName} />
-          )}
+                {tab === "Expense" && paidExpenses.length > 0 && (
+                  <button
+                    onClick={() => setShowPaid(!showPaidList)}
+                    className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-full border px-[11px] text-[11.5px] font-bold transition active:scale-95 ${
+                      showPaidList
+                        ? "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
+                        : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
+                    }`}
+                  >
+                    {showPaidList
+                      ? `‹ ${openExpenses.length} kvar`
+                      : `✓ ${paidExpenses.length} betalda`}
+                  </button>
+                )}
+              </div>
+            </header>
 
-          <AnimatePresence initial={false}>
-            {entries.map((entry) => (
-              <EntryRow
-                key={entry.id}
-                entry={entry}
+            {tab === "Expense" && !showPaidList && !allManualPaid && (
+              <PaymentRow expenses={openExpenses} monthName={monthName} />
+            )}
+
+            {allManualPaid && (
+              <p className="mb-2.5 rounded-[var(--radius-card)] border border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] px-4 py-5 text-center text-[13.5px] font-bold text-[var(--color-mint)]">
+                🎉 Allt är betalt i {monthName}
+              </p>
+            )}
+
+            <AnimatePresence initial={false}>
+              {entries.map((entry) => (
+                <EntryRow
+                  key={entry.id}
+                  entry={entry}
+                  monthName={monthName}
+                  locked={isLocked}
+                  onOpen={() => !isLocked && setEditing(entry)}
+                  onDelete={() => requestRemove(entry)}
+                  onTogglePaid={() =>
+                    setPaid.mutate({ id: entry.id, isPaid: !entry.isPaid })
+                  }
+                />
+              ))}
+            </AnimatePresence>
+
+            {listIsEmpty && (
+              <Empty
+                plan={plan}
+                tab={tab}
                 monthName={monthName}
-                locked={isLocked}
-                onOpen={() => !isLocked && setEditing(entry)}
-                onDelete={() => requestRemove(entry)}
-                onTogglePaid={() =>
-                  setPaid.mutate({ id: entry.id, isPaid: !entry.isPaid })
-                }
+                closed={isClosed}
               />
-            ))}
-          </AnimatePresence>
-
-          {entries.length === 0 && (
-            <Empty plan={plan} tab={tab} monthName={monthName} closed={isClosed} />
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </motion.div>
 
       {/* Ångra-fönstret täcker annars sista raden */}
-      {pending && <div aria-hidden style={{ height: "var(--toast-clearance)" }} />}
+      {pending && (
+        <div aria-hidden style={{ height: "var(--toast-clearance)" }} />
+      )}
 
       <ProfileButton />
 
       {!isLocked && (
         <Fab
           tab={tab}
-          onClick={() => (tab === "Savings" ? setAddingSavings(true) : setAdding(true))}
+          onClick={() =>
+            tab === "Savings" ? setAddingSavings(true) : setAdding(true)
+          }
         />
       )}
 

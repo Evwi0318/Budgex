@@ -52,13 +52,13 @@ test("knappen ligger kvar när listan scrollar", async ({ page }) => {
   await expect(fab(page)).toBeInViewport();
 });
 
-test("profilknappen visar initialer och är lika stor som plusknappen", async ({
+test("profilknappen visar en profilikon och är lika stor som plusknappen", async ({
   page,
 }) => {
   await openApp(page);
 
   const profile = page.getByRole("link", { name: "Profil" });
-  await expect(profile).toHaveText("ET");
+  await expect(profile.locator("svg")).toBeVisible();
 
   const box = (await profile.boundingBox())!;
   const plus = (await fab(page).boundingBox())!;

@@ -30,7 +30,7 @@
     --color-text-faint: #5d6a64;
 
     /* --- Typografi --- */
-    --font-sans: "Rubik", ui-sans-serif, system-ui, sans-serif;
+    --font-sans: "rubik", ui-sans-serif, system-ui, sans-serif;
 
     /* --- Hero-effekt --- */
     /* Alpha ovanpå backdrop-filter, så raderna suddas när de glider in bakom */
@@ -88,8 +88,8 @@
     }
 
     .hero-amount--compact {
-        font-size: 21px;
-        line-height: 26px;
+        font-size: 26px;
+        line-height: 30px;
     }
 
     /* Hero-kort: frostat glas, inte en solid yta */
@@ -119,12 +119,16 @@
     }
 
     .hero-tab-amount {
-        font-size: 17px;
-        transition: font-size .22s var(--ease-hero);
+
+        font-size: 19px;
+        transition: font-size .26s var(--ease-hero);
+        transform: scaleY(1.2);
+        /* 1.5 betyder 50% högre. Justera värdet efter behov. */
+        transform-origin: bottom;
     }
 
     .hero-tab-amount--compact {
-        font-size: 13px;
+        font-size: 19px;
     }
 
     /* Fokusring */
