@@ -14,6 +14,13 @@ test("bockar av en utgift och räknar ner den som är kvar att betala", async ({
 
   await expect(paymentRow(page)).toContainText(/1 kvar att betala själv/);
   await expect(paymentRow(page)).toContainText(/2\s400/);
+
+  // Avbockade utgifter göms i en egen bubbla och når man via växeln
+  await expect(entryRow(page, "Elräkning")).toHaveCount(0);
+  const toggle = page.getByRole("button", { name: /1 betalda/ });
+  await expect(toggle).toBeVisible();
+
+  await toggle.click();
   await expect(paidBox(page, "Elräkning")).toHaveAttribute("aria-pressed", "true");
 });
 

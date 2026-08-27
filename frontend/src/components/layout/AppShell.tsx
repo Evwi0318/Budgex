@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { UIEvent } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useOutlet } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { MonthContext } from "../../context/MonthContext";
 import { currentMonth } from "../../lib/month";
 import type { HomeTab, MonthContextValue } from "../../context/MonthContext";
@@ -22,6 +23,11 @@ export function AppShell() {
   const [tab, setTab] = useState<HomeTab>(() =>
     location.pathname === "/savings" ? "Savings" : "Expense"
   );
+
+  // Profilsidan och Home korsfadear in i varandra vid sidbyte — samma
+  // familj som flik-svepet (opacitet), utan att röra de flytande knapparna.
+  const pageKey = location.pathname.startsWith("/profile") ? "profile" : "home";
+  const outlet = useOutlet({ compact });
 
   useEffect(() => {
     if (location.pathname === "/savings") navigate("/", { replace: true });
@@ -69,17 +75,27 @@ export function AppShell() {
             className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
           >
             {/*
-              flex-kolumn i full höjd: barnet (Home) kan då växa till hela
-              ytan även när innehållet är kort, så svep på tom yta fångas.
+              mode="wait": bara en sida i taget, så de flytande knapparna
+              (Fab, Profil) aldrig dubbleras eller tappar sitt ankare. Wrappern
+              är flex-kolumn i full höjd så barnet (Home) kan växa till hela
+              ytan även när innehållet är kort — då fångas svep på tom yta.
             */}
-            <div
-              style={{
-                paddingBottom: "calc(var(--list-bottom) + env(safe-area-inset-bottom))",
-              }}
-              className="flex min-h-full flex-col"
-            >
-              <Outlet context={{ compact }} />
-            </div>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={pageKey}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+                style={{
+                  paddingBottom:
+                    "calc(var(--list-bottom) + env(safe-area-inset-bottom))",
+                }}
+                className="flex min-h-full flex-col"
+              >
+                {outlet}
+              </motion.div>
+            </AnimatePresence>
           </main>
         </MonthContext.Provider>
 

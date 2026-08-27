@@ -226,6 +226,14 @@ export function Home() {
   const showPaidList =
     tab === "Expense" && showPaid && paidExpenses.length > 0;
 
+  // Varje manuell utgift avbockad → tydlig kvittobanner i stället för
+  // "N kvar"-raden, precis som sparande-fliken vid allt överfört.
+  const allManualPaid =
+    tab === "Expense" &&
+    !showPaidList &&
+    paidExpenses.length > 0 &&
+    openExpenses.every((e) => e.isAutogiro);
+
   const entries =
     tab === "Income" ? incomeEntries : showPaidList ? paidExpenses : openExpenses;
 
@@ -334,8 +342,14 @@ export function Home() {
               </div>
             </header>
 
-            {tab === "Expense" && !showPaidList && (
+            {tab === "Expense" && !showPaidList && !allManualPaid && (
               <PaymentRow expenses={openExpenses} monthName={monthName} />
+            )}
+
+            {allManualPaid && (
+              <p className="mb-2.5 rounded-[var(--radius-card)] border border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] px-4 py-5 text-center text-[13.5px] font-bold text-[var(--color-mint)]">
+                🎉 Allt är betalt i {monthName}
+              </p>
             )}
 
             <AnimatePresence initial={false}>

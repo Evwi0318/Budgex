@@ -65,7 +65,7 @@ export function SavingsRow({
           </span>
 
           <span className="shrink-0 text-right">
-            <span className="text-[16px] font-extrabold tabular-nums text-[var(--color-mint)]">
+            <span className="text-[16px] font-medium tabular-nums text-[var(--color-mint)]">
               {formatNumber(account.amount)}
             </span>
             <span className="ml-1 text-[11px] font-bold text-[var(--color-text-muted)]">

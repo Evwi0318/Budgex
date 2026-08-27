@@ -63,15 +63,17 @@ test("svep på en rad tar bort raden i stället för att byta flik", async ({
   await openApp(page);
 
   const row = (await page
-    .getByRole("button", { name: "Öppna Elräkning" })
+    .getByRole("button", { name: "Öppna Mat" })
     .locator("xpath=..")
     .boundingBox())!;
 
-  await drag(page, { x: row.x + row.width - 40, y: row.y + row.height / 2 }, -120);
+  // Dra hela vägen förbi raderingströskeln
+  await drag(page, { x: row.x + row.width - 40, y: row.y + row.height / 2 }, -240);
 
-  // Fliken står kvar, och radens egen ta-bort-yta har avslöjats
+  // Fliken står kvar, och raden är borttagen med ångra-fönstret framme
   await expect(activeTab(page)).toContainText("Utgifter");
-  await expect(page.getByRole("button", { name: "Ta bort", exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Utgiften Mat borttagen");
+  await expect(page.getByRole("button", { name: "Öppna Mat" })).toHaveCount(0);
 });
 
 test("svep på månadsraden byter månad, inte flik", async ({ page }) => {

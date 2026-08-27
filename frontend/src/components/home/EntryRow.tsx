@@ -81,7 +81,7 @@ export function EntryRow({
         </button>
 
         <span
-          className={`text-[15px] font-extrabold tabular-nums ${
+          className={`text-[15px] font-medium tabular-nums ${
             entry.kind === "Income" ? "text-[var(--color-mint)]" : ""
           } ${paid ? "opacity-50" : ""}`}
         >

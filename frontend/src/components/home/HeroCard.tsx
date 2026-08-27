@@ -116,7 +116,7 @@ function Tab({
         {label}
       </span>
       <span
-        className={`hero-tab-amount mt-2 block font-extrabold tabular-nums ${tone} ${
+        className={`hero-tab-amount mt-2 block tabular-nums font-medium ${tone} ${
           compact ? "hero-tab-amount--compact" : ""
         } ${active ? "" : "opacity-50"}`}
       >

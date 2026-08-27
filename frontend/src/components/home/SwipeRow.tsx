@@ -22,20 +22,27 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
 
   return (
     <motion.div
-      layout
       data-no-tab-swipe
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
       transition={{ type: "spring", damping: 34, stiffness: 420 }}
+      // Inget layout-prop: det animerar transform samtidigt som höjden krymper
+      // vid exit, och raden kunde då bli hängande ovanpå nästa kort. Flödet
+      // knuffar ändå syskonen mjukt när höjden går mot noll.
       className="relative isolate mb-2 overflow-hidden rounded-[var(--radius-card)]"
     >
       {/* Ren feedback under draget — ingen klickbar knapp. Radering sker
-          bara genom att dra förbi tröskeln; annars studsar raden tillbaka. */}
+          bara genom att dra förbi tröskeln; annars studsar raden tillbaka.
+          Ytan täcker hela raden så röd färg följer med hur långt man än drar;
+          etiketten hålls kvar till höger där raden först lämnar plats. */}
       <motion.div
         aria-hidden
         style={{ opacity: revealed }}
-        className="absolute inset-y-0 right-0 grid w-[88px] place-items-center bg-[var(--color-danger)] text-[13px] font-extrabold text-[#3a0d0d]"
+        // Egen rundning, samma som kortet: kompositorns hörnklippning kan ligga
+        // en pixel fel, och utan detta läckte röd färg ut i vänsterhörnen när
+        // raden precis börjat röra sig eller nästan är tillbaka.
+        className="absolute inset-0 flex items-center justify-end rounded-[var(--radius-card)] bg-[var(--color-danger)] pr-5 text-[13px] font-extrabold text-[#3a0d0d]"
       >
         Ta bort
       </motion.div>
