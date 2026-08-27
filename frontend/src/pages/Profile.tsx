@@ -15,6 +15,7 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { NameForm } from "../components/profile/NameForm";
 import { PasswordForm } from "../components/profile/PasswordForm";
 import { useAuth } from "../hooks/useAuth";
+import { initials } from "../lib/initials";
 import {
   useDeleteAccountMutation,
   useProfileQuery,
@@ -108,19 +109,6 @@ export function Profile() {
   );
 }
 
-function initials(name: string | null, email: string): string {
-  const source = name?.trim();
-
-  if (!source) return email.slice(0, 2).toUpperCase();
-
-  const parts = source.split(/\s+/);
-  const letters =
-    parts.length > 1
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : parts[0].slice(0, 2);
-
-  return letters.toUpperCase();
-}
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (

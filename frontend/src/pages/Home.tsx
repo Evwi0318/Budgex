@@ -167,13 +167,6 @@ export function Home() {
   );
   const removingNoun = removing?.kind === "Income" ? "Inkomsten" : "Utgiften";
 
-  const fabLabel =
-    tab === "Income"
-      ? "Lägg till inkomst"
-      : tab === "Savings"
-        ? "Lägg till sparkonto"
-        : "Lägg till utgift";
-
   return (
     <div>
       <MonthNav
@@ -268,8 +261,8 @@ export function Home() {
 
       {!isLocked && (
         <Fab
+          tab={tab}
           onClick={() => (tab === "Savings" ? setAddingSavings(true) : setAdding(true))}
-          label={fabLabel}
         />
       )}
 
