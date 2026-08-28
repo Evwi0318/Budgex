@@ -242,7 +242,7 @@ public static class AuthEndpoints
         {
             HttpOnly = true,
             Secure = !isDevelopment,
-            SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.None,
+            SameSite = SameSiteMode.Lax,
             Expires = expiresAt,
             Path = "/api/auth"
         });
