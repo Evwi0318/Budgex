@@ -105,7 +105,7 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// Bakom Azures ingress är RemoteIpAddress proxyns adress. Utan detta
+// Bakom Cloud Runs proxy är RemoteIpAddress proxyns adress. Utan detta
 // hamnar alla användare i samma hink och begränsningen nedan blir
 // verkningslös — den skulle strypa alla så fort någon en gör mycket.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
