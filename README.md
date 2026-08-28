@@ -18,7 +18,7 @@ Budgex is a budgeting app for students and people with mixed income (salary + Sw
 - **Frontend:** React + TypeScript + Vite + Tailwind CSS (PWA)
 - **Testing:** xUnit, Vitest + React Testing Library
 - **CI/CD:** GitHub Actions
-- **Hosting:** Azure Container Apps (API), Neon (database)
+- **Hosting:** Google Cloud Run (API), Neon (database)
 
 ## Architecture
 
