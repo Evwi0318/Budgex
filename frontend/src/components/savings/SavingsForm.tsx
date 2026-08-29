@@ -3,6 +3,8 @@ import { Label } from "../home/AddEntryForm";
 import { SourcePicker } from "./SourcePicker";
 import { categoryOf } from "../../lib/categories";
 import { formatNumber } from "../../lib/format";
+import { parseAmount } from "../../lib/amount";
+import { saveError } from "../../lib/apiError";
 import { draftAmount, goalProgress } from "../../lib/savings";
 import {
   useAddSavingsAccountMutation,
@@ -108,7 +110,7 @@ export function SavingsForm({
           <input
             type="text"
             value={icon}
-            onChange={(event) => setIcon(lastCharacter(event.target.value))}
+            onChange={(event) => setIcon(lastGrapheme(event.target.value))}
             title="Välj ikon"
             className="h-[46px] w-[46px] shrink-0 rounded-xl border-[1.5px] border-[var(--color-border)] bg-[var(--color-surface-2)] text-center text-[22px] leading-none outline-none focus:border-[var(--color-mint)] focus:bg-[var(--color-mint-wash)]"
           />
@@ -129,7 +131,12 @@ export function SavingsForm({
           <GoalField label="Redan sparat" value={saved} onChange={setSaved} />
           <GoalField label="Målbelopp" value={goal} onChange={setGoal} />
         </div>
-        <GoalHint goal={goal} saved={saved} perMonth={total} />
+        {/* Fast höjd: raden växlar mellan en och två rader medan man drar i
+            reglaget, och arket är förankrat i nederkanten — utan den här
+            reservationen hoppar fälten upp och ner. */}
+        <div className="mt-2.5 min-h-[38px]">
+          <GoalHint goal={goal} saved={saved} perMonth={total} />
+        </div>
       </div>
 
       <div>
@@ -175,7 +182,7 @@ export function SavingsForm({
 
       {failed && (
         <p className="text-sm text-[var(--color-danger)]">
-          Kunde inte spara. Försök igen.
+          {saveError(addAccount.error ?? updateAccount.error)}
         </p>
       )}
 
@@ -226,9 +233,7 @@ function GoalField({ label, value, onChange }: GoalFieldProps) {
         inputMode="numeric"
         value={value === 0 ? "" : value}
         placeholder="0"
-        onChange={(event) =>
-          onChange(Number(event.target.value.replace(/\D/g, "")) || 0)
-        }
+        onChange={(event) => onChange(parseAmount(event.target.value))}
         className="h-[46px] w-full rounded-xl border border-transparent bg-[var(--color-surface-2)] px-3.5 text-[15px] font-bold tabular-nums outline-none focus:border-[var(--color-mint-dim)] placeholder:font-semibold placeholder:text-[var(--color-text-faint)]"
       />
     </label>
@@ -246,7 +251,7 @@ function GoalHint({ goal, saved, perMonth }: GoalHintProps) {
 
   if (saved >= goal) {
     return (
-      <p className="mt-2.5 text-[12px] font-semibold text-[var(--color-mint)]">
+      <p className="text-[12px] leading-[19px] font-semibold text-[var(--color-mint)]">
         Målet är redan nått 🎉
       </p>
     );
@@ -254,14 +259,14 @@ function GoalHint({ goal, saved, perMonth }: GoalHintProps) {
 
   if (perMonth <= 0) {
     return (
-      <p className="mt-2.5 text-[12px] font-semibold text-[var(--color-text-muted)]">
+      <p className="text-[12px] leading-[19px] font-semibold text-[var(--color-text-muted)]">
         Välj en källa nedan så räknar vi ut när du är framme.
       </p>
     );
   }
 
   return (
-    <p className="mt-2.5 text-[12px] font-semibold leading-relaxed text-[var(--color-text-muted)]">
+    <p className="text-[12px] leading-[19px] font-semibold text-[var(--color-text-muted)]">
       Med {formatNumber(perMonth)} kr i månaden är du framme{" "}
       <b className="font-extrabold text-[var(--color-mint)]">
         {goalProgress(goal, saved, perMonth).eta}
@@ -280,8 +285,12 @@ function initialDrafts(account: SavingsAccount | null): Record<string, Draft> {
   );
 }
 
-function lastCharacter(value: string): string {
-  const characters = [...value];
+// [...value] delar en emoji som 👨‍👩‍👧 eller 🇸🇪 i flera kodpunkter, och då
+// blev ikonen bara sista biten. Segmenter håller ihop hela tecknet.
+const graphemes = new Intl.Segmenter();
 
-  return characters[characters.length - 1] ?? "🐷";
+function lastGrapheme(value: string): string {
+  const parts = [...graphemes.segment(value)];
+
+  return parts[parts.length - 1]?.segment ?? "🐷";
 }

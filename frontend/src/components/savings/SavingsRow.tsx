@@ -76,6 +76,7 @@ export function SavingsRow({
 
         <button
           onClick={onToggleTransfer}
+          disabled={locked}
           role="switch"
           aria-checked={account.isTransferred}
           aria-label={
@@ -83,7 +84,7 @@ export function SavingsRow({
               ? `Ångra överföringen till ${account.name}`
               : `Markera ${formatKr(account.amount)} till ${account.name} som överfört`
           }
-          className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition active:scale-90 ${
+          className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition not-disabled:active:scale-90 disabled:opacity-40 ${
             account.isTransferred
               ? "border-[var(--color-mint)] bg-[var(--color-mint)] text-[var(--color-on-mint)]"
               : "border-[var(--color-border)] text-transparent"

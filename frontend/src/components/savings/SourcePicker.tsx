@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import { Segmented } from "../ui/Segmented";
 import { categoryOf } from "../../lib/categories";
 import { formatKr } from "../../lib/format";
 import { draftAmount } from "../../lib/savings";
@@ -90,22 +91,22 @@ export function SourcePicker({
             {draft && (
               <div className="border-t border-[var(--color-border)] px-3.5 py-3">
                 <div className="flex items-center gap-2">
-                  <div className="flex gap-1 rounded-xl bg-[var(--color-bg)] p-1">
-                    {(["Fixed", "Percentage"] as const).map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => set(income.id, convert(draft, type, income.amount))}
-                        className={`w-10 rounded-lg py-1.5 text-[12.5px] font-bold transition ${
-                          draft.ruleType === type
-                            ? "bg-[var(--color-mint)] text-[var(--color-on-mint)]"
-                            : "text-[var(--color-text-muted)]"
-                        }`}
-                      >
-                        {type === "Fixed" ? "kr" : "%"}
-                      </button>
-                    ))}
-                  </div>
+                  <Segmented
+                    options={["kr", "%"]}
+                    selected={draft.ruleType === "Fixed" ? 0 : 1}
+                    onSelect={(index) =>
+                      set(
+                        income.id,
+                        convert(
+                          draft,
+                          index === 0 ? "Fixed" : "Percentage",
+                          income.amount
+                        )
+                      )
+                    }
+                    tone="sunken"
+                    compact
+                  />
 
                   <div className="flex h-10 flex-1 items-center gap-2 rounded-xl bg-[var(--color-bg)] px-3">
                     <input
@@ -140,7 +141,9 @@ export function SourcePicker({
                   />
                 )}
 
-                <p className="mt-2 text-[11.5px] text-[var(--color-text-faint)]">
+                {/* Två raders höjd är avsatt även när texten bara tar en: annars
+                    växer arket medan man drar i reglaget, och fälten hoppar. */}
+                <p className="mt-2 min-h-[34px] text-[11.5px] leading-[17px] text-[var(--color-text-faint)]">
                   {warning ?? `Ger ${formatKr(draftAmount(draft, income.amount))} i månaden.`}
                 </p>
               </div>
