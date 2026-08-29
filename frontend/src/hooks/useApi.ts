@@ -1,4 +1,5 @@
 import { useAuth } from "./useAuth";
+import { ApiError } from "../lib/apiError";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -40,6 +41,9 @@ export function useApi() {
     }
 
     if (!response.ok) {
+      const message = await readMessage(response);
+
+      if (message) throw new ApiError(message, response.status);
       throw new Error(`${options.method ?? "GET"} ${path} gav ${response.status}`);
     }
 
@@ -47,4 +51,21 @@ export function useApi() {
   };
 
   return { request };
+}
+
+// API:t lägger sin förklaring i { message } på 400. Utan den här raden blir varje
+// avvisad sparning "kunde inte spara", oavsett vad som faktiskt var fel.
+async function readMessage(response: Response): Promise<string | null> {
+  try {
+    const body: unknown = await response.json();
+
+    if (typeof body === "object" && body !== null) {
+      const { message } = body as { message?: unknown };
+      if (typeof message === "string" && message.length > 0) return message;
+    }
+  } catch {
+    // Svaret var inte JSON — fall tillbaka på statuskoden
+  }
+
+  return null;
 }

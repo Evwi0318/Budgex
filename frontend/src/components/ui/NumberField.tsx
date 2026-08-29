@@ -1,3 +1,5 @@
+import { parseAmount } from "../../lib/amount";
+
 interface NumberFieldProps {
   label: string;
   value: number;
@@ -28,10 +30,7 @@ export function NumberField({
           // för hand innan man kan skriva sitt belopp
           value={value === 0 ? "" : value}
           placeholder="0"
-          onChange={(e) => {
-            const digitsOnly = e.target.value.replace(/\D/g, "");
-            onChange(digitsOnly === "" ? 0 : Number(digitsOnly));
-          }}
+          onChange={(event) => onChange(parseAmount(event.target.value))}
           className="flex-1 min-w-0 bg-transparent text-[17px] font-extrabold text-[var(--color-text)] tabular-nums outline-none placeholder:text-[var(--color-text-faint)] placeholder:font-normal"
         />
         <span className="text-[15px] text-[var(--color-text-muted)] shrink-0">
