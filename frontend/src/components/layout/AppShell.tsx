@@ -72,7 +72,7 @@ export function AppShell() {
           <main
             onScroll={handleScroll}
             style={{ overflowAnchor: "none" }}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-none"
           >
             {/*
               mode="wait": bara en sida i taget, så de flytande knapparna
@@ -86,7 +86,7 @@ export function AppShell() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.16, ease: "easeOut" }}
+                transition={{ duration: 0.1, ease: "easeOut" }}
                 style={{
                   paddingBottom:
                     "calc(var(--list-bottom) + env(safe-area-inset-bottom))",
