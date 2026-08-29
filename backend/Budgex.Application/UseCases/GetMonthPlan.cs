@@ -25,8 +25,8 @@ public sealed class GetMonthPlan(IEntryRepository entries, ISavingsRepository sa
         return new MonthPlanDto(
             month.Year,
             month.Month,
-            Map(planned, EntryKind.Income),
-            Map(planned, EntryKind.Expense),
+            Map(planned, EntryKind.Income, month),
+            Map(planned, EntryKind.Expense, month),
             new SummaryDto(result.Income, expenses, result.TotalSavings, result.SafeToSpend));
     }
 
@@ -48,7 +48,11 @@ public sealed class GetMonthPlan(IEntryRepository entries, ISavingsRepository sa
     private static decimal Total(IReadOnlyList<PlannedEntry> planned, EntryKind kind) =>
         planned.Where(item => item.Entry.Kind == kind).Sum(item => item.Amount);
 
-    private static List<EntryDto> Map(IReadOnlyList<PlannedEntry> planned, EntryKind kind) =>
+    // Repeats svarar på om posten lever vidare efter den här månaden, inte på om
+    // den någon gång gjort det. Annars står "Varje månad" kvar på en post vars
+    // sista månad man just tittar på.
+    private static List<EntryDto> Map(
+        IReadOnlyList<PlannedEntry> planned, EntryKind kind, MonthKey month) =>
         planned
             .Where(item => item.Entry.Kind == kind)
             .Select(item => new EntryDto(
@@ -59,6 +63,6 @@ public sealed class GetMonthPlan(IEntryRepository entries, ISavingsRepository sa
                 item.Amount,
                 item.Entry.IsAutogiro,
                 item.IsPaid,
-                item.Entry.To != item.Entry.From.Next))
+                item.Entry.To is null || item.Entry.To > month.Next))
             .ToList();
 }

@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Button } from "../ui/Button";
 import { NumberField } from "../ui/NumberField";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
-import { Label, Segmented } from "./AddEntryForm";
+import { Segmented } from "../ui/Segmented";
+import { Label } from "./AddEntryForm";
 import { categoriesFor } from "../../lib/categories";
 import { formatKr, getMonthName } from "../../lib/format";
 import { useUpdateEntryMutation } from "../../hooks/useEntryMutation";
+import { saveError } from "../../lib/apiError";
 import type { EntryScope } from "../../hooks/useEntryMutation";
 import type { PlannedEntry } from "../../hooks/useMonthPlanQuery";
 
@@ -34,6 +36,7 @@ export function EditEntryForm({
   const [amount, setAmount] = useState(entry.amount);
   const [category, setCategory] = useState(entry.category);
   const [isAutogiro, setIsAutogiro] = useState(entry.isAutogiro);
+  const [repeats, setRepeats] = useState(entry.repeats);
   const [askingScope, setAskingScope] = useState(false);
 
   const updateEntry = useUpdateEntryMutation(year, month);
@@ -43,7 +46,8 @@ export function EditEntryForm({
     name !== entry.name ||
     amount !== entry.amount ||
     category !== entry.category ||
-    isAutogiro !== entry.isAutogiro;
+    isAutogiro !== entry.isAutogiro ||
+    repeats !== entry.repeats;
 
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
@@ -56,6 +60,7 @@ export function EditEntryForm({
         category,
         amount,
         isAutogiro,
+        repeats,
         scope,
       },
       { onSuccess: onSaved }
@@ -65,7 +70,9 @@ export function EditEntryForm({
     event.preventDefault();
     if (!canSave) return;
 
-    if (entry.repeats && amount !== entry.amount) {
+    // Frågan om omfattning gäller bara ett belopp som ändras och fortsätter
+    // gälla kommande månader. Slår man av "Varje månad" tar valet av Gäller över.
+    if (entry.repeats && repeats && amount !== entry.amount) {
       setAskingScope(true);
       return;
     }
@@ -115,6 +122,15 @@ export function EditEntryForm({
           </div>
         </div>
 
+        <div>
+          <Label>Gäller</Label>
+          <Segmented
+            options={[`Bara ${monthName}`, "Varje månad"]}
+            selected={repeats ? 1 : 0}
+            onSelect={(index) => setRepeats(index === 1)}
+          />
+        </div>
+
         {entry.kind === "Expense" && (
           <div>
             <Label>Betalning</Label>
@@ -128,7 +144,7 @@ export function EditEntryForm({
 
         {updateEntry.isError && (
           <p className="text-sm text-[var(--color-danger)]">
-            Kunde inte spara. Försök igen.
+            {saveError(updateEntry.error)}
           </p>
         )}
 

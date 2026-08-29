@@ -20,6 +20,7 @@ export interface EntryUpdate {
   category: string;
   amount: number;
   isAutogiro: boolean;
+  repeats: boolean;
   scope: EntryScope;
 }
 
