@@ -50,7 +50,7 @@ function Panel({
   monthLabel,
   onClose,
 }: Omit<ExactAmountsProps, "open">) {
-  // Medan fönstret tonar bort ska trycken bakom gå fram igen
+  // På väg ut är fönstret inte längre en dialog: trycken bakom går fram igen
   const present = useIsPresent();
   const heading = summary.safeToSpend < 0 ? "Över budget" : "Kvar att spendera";
 
@@ -72,6 +72,8 @@ function Panel({
       <motion.div
         role="dialog"
         aria-modal={present ? "true" : undefined}
+        aria-hidden={present ? undefined : true}
+        inert={!present}
         aria-label={`Exakta belopp för ${monthLabel}`}
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}

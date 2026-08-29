@@ -53,8 +53,9 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
   const y = useMotionValue(0);
   const pull = useRef<{ x: number; y: number; atTop: boolean } | null>(null);
 
-  // Medan arket glider ut ska skärmen redan gå att använda: inga tryck fångas,
-  // och svepet mellan flikarna ser inte längre någon öppen dialog.
+  // Ett ark på väg ut är inte längre en dialog: det tar inga tryck, syns inte
+  // för skärmläsare, och svepet mellan flikarna ser ingen öppen dialog. Utan
+  // det ligger det kvar över skärmen tills animationen är helt färdig.
   const present = useIsPresent();
 
   // Draget får börja var som helst i arket, men bara när innehållet redan
@@ -102,6 +103,8 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
       <motion.div
         role="dialog"
         aria-modal={present ? "true" : undefined}
+        aria-hidden={present ? undefined : true}
+        inert={!present}
         drag="y"
         // Draget startas härifrån, inte av motion självt: annars krockar
         // det med formulärets egen scroll så fort innehållet är högre
