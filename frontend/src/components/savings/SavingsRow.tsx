@@ -1,4 +1,3 @@
-import { Check } from "lucide-react";
 import { formatKr, formatNumber } from "../../lib/format";
 import { goalProgress } from "../../lib/savings";
 import type { SavingsAccount, SourceUsage } from "../../hooks/useSavingsQuery";
@@ -84,13 +83,14 @@ export function SavingsRow({
               ? `Ångra överföringen till ${account.name}`
               : `Markera ${formatKr(account.amount)} till ${account.name} som överfört`
           }
-          className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition not-disabled:active:scale-90 disabled:opacity-40 ${
+          // Samma ruta som på en utgift, så att det syns att det är samma sak
+          className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[9px] border-2 text-[14px] font-black transition not-disabled:active:scale-90 disabled:opacity-40 ${
             account.isTransferred
               ? "border-[var(--color-mint)] bg-[var(--color-mint)] text-[var(--color-on-mint)]"
               : "border-[var(--color-border)] text-transparent"
           }`}
         >
-          <Check size={14} strokeWidth={3} />
+          ✓
         </button>
       </div>
 

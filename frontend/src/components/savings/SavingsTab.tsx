@@ -106,13 +106,6 @@ export function SavingsTab({
 
         <span className="flex-1" />
 
-        {!isLocked && hasAccounts && done.length === 0 && (
-          <span className="flex min-w-0 items-center gap-[7px] text-[11px] font-bold text-[var(--color-text-muted)]">
-            <span className="truncate">Bocka av när du gjort överföringen</span>
-            <span className="h-[18px] w-[18px] shrink-0 rounded-full border-[1.8px] border-[var(--color-text-faint)]" />
-          </span>
-        )}
-
         {isClosed && (
           <button
             onClick={isLocked ? unlock : relock}

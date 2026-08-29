@@ -32,8 +32,6 @@ test("visar sparkontona med sina regler och summan att överföra", async ({ pag
 });
 
 test("bockar av ett konto och visar hur många som är överförda", async ({ page }) => {
-  await expect(page.getByText("Bocka av när du gjort överföringen")).toBeVisible();
-
   await transferSwitch(page, "Buffert").click();
 
   // Ett avbockat konto lämnar kvar-listan och räknas i stället som överfört
@@ -41,7 +39,6 @@ test("bockar av ett konto och visar hur många som är överförda", async ({ pa
   await expect(page.getByRole("button", { name: /Öppna Resa/ })).toBeVisible();
   await expect(showTransferred(page)).toContainText("1 överförda");
   await expect(markAll(page)).toContainText(/500/);
-  await expect(page.getByText("Bocka av när du gjort överföringen")).toHaveCount(0);
 
   await showTransferred(page).click();
   await expect(transferSwitch(page, "Buffert")).toHaveAttribute("aria-checked", "true");
