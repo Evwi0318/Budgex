@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { isPast } from "../lib/month";
 
 /**
@@ -38,10 +38,15 @@ export function useMonthLock(year: number, month: number) {
 
   const closed = isPast({ year, month });
 
+  // Stabila mellan renderingar: Home memoiserar flikarnas innehåll, och nya
+  // funktioner varje render skulle slå ut den memoiseringen.
+  const unlock = useCallback(() => setUnlockedMonth(key), [key]);
+  const relock = useCallback(() => setUnlockedMonth(null), []);
+
   return {
     isClosed: closed,
     isLocked: closed && unlockedMonth !== key,
-    unlock: () => setUnlockedMonth(key),
-    relock: () => setUnlockedMonth(null),
+    unlock,
+    relock,
   };
 }

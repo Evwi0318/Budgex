@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { formatKr, formatNumber } from "../../lib/format";
 import { goalProgress } from "../../lib/savings";
 import type { SavingsAccount, SourceUsage } from "../../hooks/useSavingsQuery";
@@ -10,7 +11,7 @@ interface SavingsRowProps {
   onToggleTransfer: () => void;
 }
 
-export function SavingsRow({
+function Row({
   account,
   sources,
   locked,
@@ -118,6 +119,15 @@ export function SavingsRow({
     </div>
   );
 }
+
+/** Samma skäl som i EntryRow: flikbytet ska inte rita om rader som inte ändrats */
+export const SavingsRow = memo(
+  Row,
+  (before, after) =>
+    before.account === after.account &&
+    before.sources === after.sources &&
+    before.locked === after.locked
+);
 
 function ruleText(rule: {
   ruleType: string;

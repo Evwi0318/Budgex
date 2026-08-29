@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
@@ -47,6 +47,7 @@ export function Home() {
   // låst i en flik och upplåst i en annan
   const { isClosed, isLocked, unlock, relock } = useMonthLock(year, month);
   const setPaid = useSetPaidMutation(year, month);
+  const togglePaid = setPaid.mutate;
   const { pending, removed, schedule, undo } = useUndoableDelete(
     year,
     month,
@@ -73,25 +74,30 @@ export function Home() {
   const requestCloseAdd = () =>
     addDirty ? setAddDiscarding(true) : closeAdd();
 
-  const closeEdit = () => {
+  const closeEdit = useCallback(() => {
     setEditing(null);
     setEditDirty(false);
     setDiscarding(false);
-  };
+  }, []);
 
   const requestCloseEdit = () =>
     editDirty ? setDiscarding(true) : closeEdit();
 
-  const requestRemove = (entry: PlannedEntry) => {
-    closeEdit();
+  const requestRemove = useCallback(
+    (entry: PlannedEntry) => {
+      closeEdit();
 
-    if (entry.repeats) {
-      setRemoving(entry);
-      return;
-    }
+      if (entry.repeats) {
+        setRemoving(entry);
+        return;
+      }
 
-    schedule(entry, "Onwards");
-  };
+      schedule(entry, "Onwards");
+    },
+    [closeEdit, schedule],
+  );
+
+  const closeSavings = useCallback(() => setAddingSavings(false), []);
 
   const confirmRemove = (scope: EntryScope) => {
     if (!removing) return;
@@ -99,6 +105,179 @@ export function Home() {
     schedule(removing, scope);
     setRemoving(null);
   };
+
+  // Borttagna poster försvinner ur både listan och hero-kortet direkt, redan
+  // innan raderingen skickats — annars står summan kvar hela ångra-fönstret ut.
+  const summary = useMemo(
+    () => (plan ? removed.reduce(withoutEntry, plan.summary) : null),
+    [plan, removed],
+  );
+
+  /**
+   * Flikarnas innehåll byggs bara om när något de visar har ändrats. Ett
+   * flikbyte rör då bara panelernas position, i stället för att rita om alla
+   * tre listorna — det var det som gjorde bytet segare ju längre listan var.
+   */
+  const panels = useMemo(() => {
+    if (!plan) return null;
+
+    const monthName = getMonthName(month);
+    const hidden = new Set(removed.map((entry) => entry.id));
+
+    const incomeEntries = plan.income.filter((entry) => !hidden.has(entry.id));
+    const expenseEntries = plan.expenses.filter(
+      (entry) => !hidden.has(entry.id),
+    );
+
+    // Manuellt ibockade utgifter göms i en egen bubbla. Autogiro räknas alltid
+    // som betalt men ligger kvar i listan — det är inget du bockar av.
+    const paidExpenses = expenseEntries.filter((e) => !e.isAutogiro && e.isPaid);
+    const openExpenses = expenseEntries.filter((e) => e.isAutogiro || !e.isPaid);
+
+    const renderTab = (which: HomeTab) => {
+      if (which === "Savings") {
+        return (
+          <SavingsTab
+            plan={plan}
+            isClosed={isClosed}
+            isLocked={isLocked}
+            unlock={unlock}
+            relock={relock}
+            adding={addingSavings}
+            onCloseAdding={closeSavings}
+          />
+        );
+      }
+
+      const isExpense = which === "Expense";
+      const showPaidList = isExpense && showPaid && paidExpenses.length > 0;
+
+      // Varje manuell utgift avbockad → tydlig kvittobanner i stället för
+      // "N kvar"-raden, precis som sparande-fliken vid allt överfört.
+      const allManualPaid =
+        isExpense &&
+        !showPaidList &&
+        paidExpenses.length > 0 &&
+        openExpenses.every((e) => e.isAutogiro);
+
+      const entries = !isExpense
+        ? incomeEntries
+        : showPaidList
+          ? paidExpenses
+          : openExpenses;
+
+      // Tomt-läget styrs av om månaden har poster alls, inte av den synliga
+      // listan — annars visas välkomsttexten när allt är betalt.
+      const listIsEmpty =
+        (isExpense ? expenseEntries : incomeEntries).length === 0;
+
+      return (
+        <div className="px-4 pt-5">
+          <header className="mb-2.5 flex items-center gap-2.5 px-1">
+            <span className="text-[13.5px] font-bold tracking-[-0.015em] text-[var(--color-text)]">
+              {!isExpense
+                ? "Inkomst"
+                : showPaidList
+                  ? `Betalda i ${monthName}`
+                  : "Utgifter"}
+            </span>
+
+            <span
+              className={`grid h-[21px] min-w-[21px] place-items-center rounded-full px-1.5 text-[11.5px] font-extrabold ${
+                isExpense
+                  ? "bg-[var(--color-danger-wash)] text-[var(--color-danger)]"
+                  : "bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
+              }`}
+            >
+              {entries.length}
+            </span>
+
+            <div className="ml-auto flex items-center gap-2">
+              {isClosed && (
+                <button
+                  onClick={isLocked ? unlock : relock}
+                  className={`rounded-full border px-2.5 py-1.5 text-[12.5px] font-extrabold transition active:scale-95 ${
+                    isLocked
+                      ? "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]"
+                      : "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
+                  }`}
+                >
+                  {isLocked
+                    ? "🔒 Avslutad — lås upp"
+                    : "🔓 Upplåst — lås igen"}
+                </button>
+              )}
+
+              {isExpense && paidExpenses.length > 0 && (
+                <button
+                  onClick={() => setShowPaid(!showPaidList)}
+                  className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-full border px-[11px] text-[11.5px] font-bold transition active:scale-95 ${
+                    showPaidList
+                      ? "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
+                      : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
+                  }`}
+                >
+                  {showPaidList
+                    ? `‹ ${openExpenses.length} kvar`
+                    : `✓ ${paidExpenses.length} betalda`}
+                </button>
+              )}
+            </div>
+          </header>
+
+          {isExpense && !showPaidList && !allManualPaid && (
+            <PaymentRow expenses={openExpenses} monthName={monthName} />
+          )}
+
+          {allManualPaid && (
+            <p className="mb-2.5 rounded-[var(--radius-card)] border border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] px-4 py-5 text-center text-[13.5px] font-bold text-[var(--color-mint)]">
+              🎉 Allt är betalt i {monthName}
+            </p>
+          )}
+
+          <AnimatePresence initial={false}>
+            {entries.map((entry) => (
+              <EntryRow
+                key={entry.id}
+                entry={entry}
+                monthName={monthName}
+                locked={isLocked}
+                onOpen={() => !isLocked && setEditing(entry)}
+                onDelete={() => requestRemove(entry)}
+                onTogglePaid={() =>
+                  togglePaid({ id: entry.id, isPaid: !entry.isPaid })
+                }
+              />
+            ))}
+          </AnimatePresence>
+
+          {listIsEmpty && (
+            <Empty
+              plan={plan}
+              tab={which}
+              monthName={monthName}
+              closed={isClosed}
+            />
+          )}
+        </div>
+      );
+    };
+
+    return TABS.map(renderTab);
+  }, [
+    plan,
+    removed,
+    month,
+    isClosed,
+    isLocked,
+    unlock,
+    relock,
+    showPaid,
+    addingSavings,
+    closeSavings,
+    requestRemove,
+    togglePaid,
+  ]);
 
   if (isLoading) {
     return (
@@ -109,7 +288,7 @@ export function Home() {
     );
   }
 
-  if (!plan) {
+  if (!plan || !summary || !panels) {
     return (
       <p className="px-4 py-6 text-center text-[var(--color-text-muted)]">
         Kunde inte hämta månaden. Kontrollera anslutningen och försök igen.
@@ -118,149 +297,7 @@ export function Home() {
   }
 
   const monthName = getMonthName(month);
-
-  // Borttagna poster försvinner ur både listan och hero-kortet direkt, redan
-  // innan raderingen skickats — annars står summan kvar hela ångra-fönstret ut.
-  const hidden = new Set(removed.map((entry) => entry.id));
-  const summary = removed.reduce(withoutEntry, plan.summary);
-
-  const incomeEntries = plan.income.filter((entry) => !hidden.has(entry.id));
-  const expenseEntries = plan.expenses.filter((entry) => !hidden.has(entry.id));
-
-  // Manuellt ibockade utgifter göms i en egen bubbla. Autogiro räknas alltid
-  // som betalt men ligger kvar i listan — det är inget du bockar av.
-  const paidExpenses = expenseEntries.filter((e) => !e.isAutogiro && e.isPaid);
-  const openExpenses = expenseEntries.filter((e) => e.isAutogiro || !e.isPaid);
-
   const removingNoun = removing?.kind === "Income" ? "Inkomsten" : "Utgiften";
-
-  const renderTab = (which: HomeTab) => {
-    if (which === "Savings") {
-      return (
-        <SavingsTab
-          plan={plan}
-          isClosed={isClosed}
-          isLocked={isLocked}
-          unlock={unlock}
-          relock={relock}
-          adding={addingSavings}
-          onCloseAdding={() => setAddingSavings(false)}
-        />
-      );
-    }
-
-    const isExpense = which === "Expense";
-    const showPaidList = isExpense && showPaid && paidExpenses.length > 0;
-
-    // Varje manuell utgift avbockad → tydlig kvittobanner i stället för
-    // "N kvar"-raden, precis som sparande-fliken vid allt överfört.
-    const allManualPaid =
-      isExpense &&
-      !showPaidList &&
-      paidExpenses.length > 0 &&
-      openExpenses.every((e) => e.isAutogiro);
-
-    const entries = !isExpense
-      ? incomeEntries
-      : showPaidList
-        ? paidExpenses
-        : openExpenses;
-
-    // Tomt-läget styrs av om månaden har poster alls, inte av den synliga
-    // listan — annars visas välkomsttexten när allt är betalt.
-    const listIsEmpty = (isExpense ? expenseEntries : incomeEntries).length === 0;
-
-    return (
-      <div className="px-4 pt-5">
-        <header className="mb-2.5 flex items-center gap-2.5 px-1">
-          <span className="text-[13.5px] font-bold tracking-[-0.015em] text-[var(--color-text)]">
-            {!isExpense
-              ? "Inkomst"
-              : showPaidList
-                ? `Betalda i ${monthName}`
-                : "Utgifter"}
-          </span>
-
-          <span
-            className={`grid h-[21px] min-w-[21px] place-items-center rounded-full px-1.5 text-[11.5px] font-extrabold ${
-              isExpense
-                ? "bg-[var(--color-danger-wash)] text-[var(--color-danger)]"
-                : "bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
-            }`}
-          >
-            {entries.length}
-          </span>
-
-          <div className="ml-auto flex items-center gap-2">
-            {isClosed && (
-              <button
-                onClick={isLocked ? unlock : relock}
-                className={`rounded-full border px-2.5 py-1.5 text-[12.5px] font-extrabold transition active:scale-95 ${
-                  isLocked
-                    ? "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]"
-                    : "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
-                }`}
-              >
-                {isLocked
-                  ? "🔒 Avslutad — lås upp"
-                  : "🔓 Upplåst — lås igen"}
-              </button>
-            )}
-
-            {isExpense && paidExpenses.length > 0 && (
-              <button
-                onClick={() => setShowPaid(!showPaidList)}
-                className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-full border px-[11px] text-[11.5px] font-bold transition active:scale-95 ${
-                  showPaidList
-                    ? "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
-                    : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
-                }`}
-              >
-                {showPaidList
-                  ? `‹ ${openExpenses.length} kvar`
-                  : `✓ ${paidExpenses.length} betalda`}
-              </button>
-            )}
-          </div>
-        </header>
-
-        {isExpense && !showPaidList && !allManualPaid && (
-          <PaymentRow expenses={openExpenses} monthName={monthName} />
-        )}
-
-        {allManualPaid && (
-          <p className="mb-2.5 rounded-[var(--radius-card)] border border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] px-4 py-5 text-center text-[13.5px] font-bold text-[var(--color-mint)]">
-            🎉 Allt är betalt i {monthName}
-          </p>
-        )}
-
-        <AnimatePresence initial={false}>
-          {entries.map((entry) => (
-            <EntryRow
-              key={entry.id}
-              entry={entry}
-              monthName={monthName}
-              locked={isLocked}
-              onOpen={() => !isLocked && setEditing(entry)}
-              onDelete={() => requestRemove(entry)}
-              onTogglePaid={() =>
-                setPaid.mutate({ id: entry.id, isPaid: !entry.isPaid })
-              }
-            />
-          ))}
-        </AnimatePresence>
-
-        {listIsEmpty && (
-          <Empty
-            plan={plan}
-            tab={which}
-            monthName={monthName}
-            closed={isClosed}
-          />
-        )}
-      </div>
-    );
-  };
 
   return (
     <>
@@ -293,7 +330,7 @@ export function Home() {
           </>
         }
       >
-        {(index) => renderTab(TABS[index])}
+        {(index) => panels[index]}
       </SwipeTabs>
 
       {/* Ångra-fönstret täcker annars sista raden */}
