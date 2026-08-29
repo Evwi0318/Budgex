@@ -37,7 +37,9 @@ test("sparar målbeloppet och visar när det nås", async ({ page }) => {
   await sheet.getByRole("button", { name: "%", exact: true }).click();
   await sheet.locator('input[type="range"]').fill("10");
 
-  await expect(sheet).toContainText(/är du framme ungefär \w+ \d{4}/);
+  // Datumet ligger på egen rad, så raderna kollas var för sig
+  await expect(sheet).toContainText("är du framme");
+  await expect(sheet).toContainText(/ungefär \w+ \d{4}/);
 
   await sheet.getByRole("button", { name: "Lägg till" }).click();
 

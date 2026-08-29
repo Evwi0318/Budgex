@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useDragControls } from "motion/react";
-import type { ReactNode } from "react";
+import { animate, AnimatePresence, motion, useDragControls, useMotionValue } from "motion/react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 800;
+/** Så långt måste fingret dras nedåt innan arket tar över från listan */
+const PULL_START = 12;
+const RETURN = { type: "spring", damping: 30, stiffness: 400 } as const;
 
 interface BottomSheetProps {
   open: boolean;
@@ -14,6 +17,8 @@ interface BottomSheetProps {
 
 export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
   const dragControls = useDragControls();
+  const y = useMotionValue(0);
+  const pull = useRef<{ x: number; y: number; atTop: boolean } | null>(null);
 
   // Escape ska stänga arket, precis som backdrop-klick
   useEffect(() => {
@@ -25,6 +30,33 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
+
+  // Draget får börja var som helst i arket, men bara när innehållet redan
+  // ligger överst. Är listan scrollad ned hör rörelsen till listan.
+  const beginPull = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // Reglaget dras med samma finger — det ska inte kunna dra arket med sig
+    if ((event.target as Element).closest('input[type="range"]')) {
+      pull.current = null;
+      return;
+    }
+
+    pull.current = {
+      x: event.clientX,
+      y: event.clientY,
+      atTop: event.currentTarget.scrollTop <= 0,
+    };
+  };
+
+  const trackPull = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const from = pull.current;
+    if (!from?.atTop) return;
+
+    const dy = event.clientY - from.y;
+    if (dy < PULL_START || Math.abs(event.clientX - from.x) > dy) return;
+
+    pull.current = null;
+    dragControls.start(event);
+  };
 
   // I body: ett transformerat element blir containing block för fixed inuti sig
   return createPortal(
@@ -45,14 +77,14 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
             role="dialog"
             aria-modal="true"
             drag="y"
-            // Bara greppytan startar draget. Utan det krockar draget med
-            // formulärets egen scroll så fort innehållet är högre än arket.
+            // Draget startas härifrån, inte av motion självt: annars krockar
+            // det med formulärets egen scroll så fort innehållet är högre
+            // än arket.
             dragListener={false}
             dragControls={dragControls}
-            // bottom: 0 är det som drar tillbaka arket när draget inte räckte hela
-            // vägen. Utan den ligger arket kvar nere, och skärmen blir bara suddig.
-            dragConstraints={{ top: 0, bottom: 0 }}
+            dragConstraints={{ top: 0 }}
             dragElastic={{ top: 0, bottom: 1 }}
+            style={{ y }}
             onDragStart={() => {
               // iOS lämnar annars tangentbordet uppe medan arket dras undan
               if (document.activeElement instanceof HTMLElement) {
@@ -60,9 +92,20 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
               }
             }}
             onDragEnd={(_, info) => {
-              if (info.offset.y > DISMISS_DISTANCE || info.velocity.y > DISMISS_VELOCITY) {
+              if (
+                info.offset.y > DISMISS_DISTANCE ||
+                info.velocity.y > DISMISS_VELOCITY
+              ) {
                 onClose();
               }
+
+              // Alltid tillbaka upp. Stängdes arket tar utgången över direkt;
+              // stängdes det inte — en kasta-fråga kan ta över — ska det stå
+              // i sitt öppna läge igen i stället för att ligga kvar nere.
+              // Återgången sköts här och inte av en bottengräns i
+              // dragConstraints: motions egen återgång krockar med utgången,
+              // och då blir arket hängande kvar på skärmen.
+              animate(y, 0, RETURN);
             }}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -70,8 +113,7 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="relative flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-[var(--radius-hero)] bg-[var(--color-surface)] will-change-transform"
           >
-            {/* Hela överkanten är greppyta, inte bara strecket — den täcker också
-                rubrikraden, som ändå inte går att trycka på. */}
+            {/* Överkanten är alltid greppyta, även när listan är scrollad */}
             <div
               onPointerDown={(event) => dragControls.start(event)}
               aria-hidden="true"
@@ -86,6 +128,10 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
             </div>
 
             <div
+              onPointerDown={beginPull}
+              onPointerMove={trackPull}
+              onPointerUp={() => (pull.current = null)}
+              onPointerCancel={() => (pull.current = null)}
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5"
               style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))" }}
             >

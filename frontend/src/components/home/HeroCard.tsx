@@ -1,8 +1,14 @@
+import { useRef } from "react";
 import { motion } from "motion/react";
 import { HeroAmount } from "../ui/HeroAmount";
-import { formatKr } from "../../lib/format";
+import { formatKrShort } from "../../lib/format";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import type { MonthSummary } from "../../hooks/useMonthPlanQuery";
 import type { HomeTab } from "../../context/MonthContext";
+
+/** Så länge fingret måste ligga still innan de exakta talen visas */
+const HOLD_MS = 450;
+const HOLD_SLOP = 8;
 
 interface HeroCardProps {
   summary: MonthSummary;
@@ -11,6 +17,8 @@ interface HeroCardProps {
   dimmed?: boolean;
   /** Vid scroll krymper kortet till bara siffrorna */
   compact?: boolean;
+  /** Långtryck: stora tal visas avkortade, hela talet får ett eget fönster */
+  onInspect?: () => void;
 }
 
 export function HeroCard({
@@ -19,11 +27,62 @@ export function HeroCard({
   onSelect,
   dimmed = false,
   compact = false,
+  onInspect,
 }: HeroCardProps) {
   const heading = summary.safeToSpend < 0 ? "Över budget" : "Kvar att spendera";
 
+  const hold = useRef<{ x: number; y: number; timer: number } | null>(null);
+  const held = useRef(false);
+
+  const clearHold = () => {
+    if (hold.current) window.clearTimeout(hold.current.timer);
+    hold.current = null;
+  };
+
+  const startHold = (event: ReactPointerEvent) => {
+    held.current = false;
+    if (!onInspect) return;
+
+    hold.current = {
+      x: event.clientX,
+      y: event.clientY,
+      timer: window.setTimeout(() => {
+        held.current = true;
+        hold.current = null;
+        onInspect();
+      }, HOLD_MS),
+    };
+  };
+
+  // Rör sig fingret är det ett svep, inte ett långtryck
+  const trackHold = (event: ReactPointerEvent) => {
+    const from = hold.current;
+    if (!from) return;
+
+    if (
+      Math.abs(event.clientX - from.x) > HOLD_SLOP ||
+      Math.abs(event.clientY - from.y) > HOLD_SLOP
+    ) {
+      clearHold();
+    }
+  };
+
   return (
     <div
+      onPointerDown={startHold}
+      onPointerMove={trackHold}
+      onPointerUp={clearHold}
+      onPointerCancel={clearHold}
+      onContextMenu={(event) => event.preventDefault()}
+      // Långtrycket får inte också räknas som ett tryck på fliken under fingret
+      onClickCapture={(event) => {
+        if (!held.current) return;
+
+        held.current = false;
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      style={{ WebkitTouchCallout: "none" }}
       className={`hero-card sticky top-2 z-20 mx-4 rounded-[var(--radius-hero)] px-4 pb-1.5 transition-opacity ${
         compact ? "hero-card--compact pt-2.5" : "pt-5"
       } ${dimmed ? "opacity-70" : ""}`}
@@ -106,7 +165,7 @@ function Tab({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`flex-1 text-center ${compact ? "pt-1.5 pb-1" : "pt-3 pb-2"}`}
+      className={`min-w-0 flex-1 text-center ${compact ? "pt-1.5 pb-1" : "pt-3 pb-2"}`}
     >
       <span
         className={`hero-fade block text-[11.5px] font-medium text-[var(--color-text-muted)] ${
@@ -116,11 +175,11 @@ function Tab({
         {label}
       </span>
       <span
-        className={`hero-tab-amount mt-2 block tabular-nums font-medium ${tone} ${
+        className={`hero-tab-amount mt-2 block tabular-nums whitespace-nowrap font-medium ${tone} ${
           compact ? "hero-tab-amount--compact" : ""
         } ${active ? "" : "opacity-50"}`}
       >
-        {formatKr(amount)}
+        {formatKrShort(amount)}
       </span>
       <span
         className={`relative mx-auto block h-[3px] w-[34px] ${compact ? "mt-1" : "mt-2"}`}

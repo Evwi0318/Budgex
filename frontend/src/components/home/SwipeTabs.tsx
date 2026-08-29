@@ -1,10 +1,5 @@
-import {
-  animate,
-  motion,
-  useMotionValue,
-  useMotionValueEvent,
-} from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { animate, motion, useMotionValue } from "motion/react";
+import { useEffect, useRef } from "react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 const AXIS_LOCK = 10;
@@ -36,8 +31,12 @@ interface SwipeTabsProps {
 
 /**
  * Flikarna följer fingret medan man sveper i stället för att byta först vid
- * släpp. Grannpanelen monteras bara medan panelen är i rörelse, så viloläget
- * renderar lika lite som förut.
+ * släpp.
+ *
+ * Alla paneler ligger monterade hela tiden, var och en med sin egen nyckel.
+ * Monterades de i takt med svepet skulle panelen man sveper till byggas upp
+ * på nytt i samma stund som den blev aktiv — den syntes som en omladdning
+ * precis när fingret släpptes.
  */
 export function SwipeTabs({
   index,
@@ -53,11 +52,16 @@ export function SwipeTabs({
   const settled = useRef(index);
 
   const x = useMotionValue(0);
-  const [moving, setMoving] = useState(false);
-
-  useMotionValueEvent(x, "change", (value) => setMoving(value !== 0));
+  const settling = useRef<ReturnType<typeof animate> | null>(null);
 
   const width = () => deckRef.current?.offsetWidth ?? 0;
+
+  // En pågående återgång måste stoppas innan något annat rör x, annars
+  // skriver den över varje ny position och svepet hackar.
+  const glide = () => {
+    settling.current?.stop();
+    settling.current = animate(x, 0, SETTLE);
+  };
 
   // Ett tryck på en flik i hero-kortet ska glida likadant som ett svep
   useEffect(() => {
@@ -69,10 +73,11 @@ export function SwipeTabs({
 
     if (span === 0) return;
 
+    settling.current?.stop();
     x.set(index > from ? span : -span);
-    const controls = animate(x, 0, SETTLE);
-
-    return () => controls.stop();
+    glide();
+    // glide är stabil mellan renderingar — den rör bara refs och x
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, x]);
 
   const start = (event: ReactPointerEvent) => {
@@ -113,6 +118,7 @@ export function SwipeTabs({
 
       if (from.axis === "x") {
         swiped.current = true;
+        settling.current?.stop();
         event.currentTarget.setPointerCapture(event.pointerId);
       }
     }
@@ -150,7 +156,7 @@ export function SwipeTabs({
       onIndexChange(target);
     }
 
-    animate(x, 0, SETTLE);
+    glide();
   };
 
   return (
@@ -160,7 +166,7 @@ export function SwipeTabs({
       onPointerUp={end}
       onPointerCancel={() => {
         gesture.current = null;
-        animate(x, 0, SETTLE);
+        glide();
       }}
       // Ett svep får inte också räknas som ett tryck där fingret råkade landa
       onClickCapture={(event) => {
@@ -177,30 +183,33 @@ export function SwipeTabs({
 
       <div ref={deckRef} className="relative overflow-x-clip">
         <motion.div style={{ x }} className="relative will-change-transform">
-          {moving && index > 0 && (
-            <Neighbour side={-1}>{children(index - 1)}</Neighbour>
-          )}
+          {Array.from({ length: count }, (_, slot) => {
+            const offset = slot - index;
 
-          {children(index)}
-
-          {moving && index < count - 1 && (
-            <Neighbour side={1}>{children(index + 1)}</Neighbour>
-          )}
+            return (
+              <div
+                key={slot}
+                // Bara den aktiva panelen ligger i flödet och sätter höjden.
+                // De andra hålls utanför både layout och skärmläsare.
+                aria-hidden={offset !== 0 || undefined}
+                inert={offset !== 0}
+                className={
+                  offset === 0
+                    ? "relative"
+                    : "pointer-events-none absolute top-0 left-0 w-full"
+                }
+                style={
+                  offset === 0
+                    ? undefined
+                    : { transform: `translateX(${offset * 100}%)` }
+                }
+              >
+                {children(slot)}
+              </div>
+            );
+          })}
         </motion.div>
       </div>
-    </div>
-  );
-}
-
-/** Grannen ligger utanför flödet, så höjden styrs av panelen som visas */
-function Neighbour({ side, children }: { side: -1 | 1; children: ReactNode }) {
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute top-0 left-0 w-full"
-      style={{ transform: `translateX(${side * 100}%)` }}
-    >
-      {children}
     </div>
   );
 }

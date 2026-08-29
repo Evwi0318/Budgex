@@ -267,11 +267,11 @@ function GoalHint({ goal, saved, perMonth }: GoalHintProps) {
 
   return (
     <p className="text-[12px] leading-[19px] font-semibold text-[var(--color-text-muted)]">
-      Med {formatNumber(perMonth)} kr i månaden är du framme{" "}
-      <b className="font-extrabold text-[var(--color-mint)]">
+      Med {formatNumber(perMonth)} kr i månaden är du framme
+      {/* Egen rad: datumet får inte brytas mitt itu när månaden är lång */}
+      <b className="block font-extrabold text-[var(--color-mint)] first-letter:uppercase">
         {goalProgress(goal, saved, perMonth).eta}
       </b>
-      .
     </p>
   );
 }

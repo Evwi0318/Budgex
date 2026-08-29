@@ -117,3 +117,28 @@ test("knapparna sitter i appens kant, inte skärmens", async ({ page }) => {
   const appCentre = frame.x + frame.width / 2;
   expect(fab.x + fab.width / 2).toBeCloseTo(appCentre, 0);
 });
+
+/** Utan paus mellan svepen: det andra ska inte slåss med det förstas återgång */
+const quickDrag = async (page: Page, from: { x: number; y: number }, dx: number) => {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  for (let step = 1; step <= 6; step++) {
+    await page.mouse.move(from.x + (dx * step) / 6, from.y, { steps: 1 });
+  }
+  await page.mouse.up();
+};
+
+test("två svep i snabb följd landar rätt och står stilla", async ({ page }) => {
+  await openApp(page);
+  const at = await heroCentre(page);
+
+  await quickDrag(page, at, -120);
+  await quickDrag(page, at, 120);
+
+  await expect(activeTab(page)).toContainText("Utgifter");
+
+  const deck = page.locator("div.overflow-x-clip > div").first();
+  await expect
+    .poll(() => deck.evaluate((el) => getComputedStyle(el).transform))
+    .toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+});

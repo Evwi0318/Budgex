@@ -1,6 +1,7 @@
 import { useApi } from "./useApi";
-import { useBudgetMutation } from "./useBudgetMutation";
+import { useBudgetMutation, useOptimisticMutation } from "./useBudgetMutation";
 import type { EntryKind } from "../lib/categories";
+import type { MonthPlan } from "./useMonthPlanQuery";
 
 export type EntryScope = "Month" | "Onwards";
 
@@ -59,10 +60,20 @@ export function useDeleteEntryMutation(year: number, month: number) {
 export function useSetPaidMutation(year: number, month: number) {
   const { request } = useApi();
 
-  return useBudgetMutation(({ id, isPaid }: { id: string; isPaid: boolean }) =>
-    request(`/api/months/${year}/${month}/entries/${id}/paid`, {
-      method: "PUT",
-      body: JSON.stringify({ isPaid }),
+  // Bara månaden berörs — en avbockad utgift ändrar varken summorna eller
+  // sparandet, så det finns inget mer att hämta om.
+  return useOptimisticMutation<MonthPlan, { id: string; isPaid: boolean }>(
+    ["month", year, month],
+    ({ id, isPaid }) =>
+      request(`/api/months/${year}/${month}/entries/${id}/paid`, {
+        method: "PUT",
+        body: JSON.stringify({ isPaid }),
+      }),
+    (plan, { id, isPaid }) => ({
+      ...plan,
+      expenses: plan.expenses.map((entry) =>
+        entry.id === id ? { ...entry, isPaid } : entry
+      ),
     })
   );
 }
