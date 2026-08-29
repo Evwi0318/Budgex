@@ -4,7 +4,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 
 const AXIS_LOCK = 8;
 const COMMIT_RATIO = 0.32;
-const SPRING = { type: "spring", damping: 30, stiffness: 380 } as const;
+const SPRING = { type: "spring", damping: 30, stiffness: 380, restDelta: 0.001 } as const;
 
 const TONES = {
   surface: {
@@ -42,19 +42,44 @@ export function Segmented({
   compact = false,
 }: SegmentedProps) {
   const look = TONES[tone];
+  const last = options.length - 1;
+
   const trackRef = useRef<HTMLDivElement>(null);
   const swipe = useRef<{ x: number; y: number; axis: "" | "x" } | null>(null);
   const dragged = useRef(false);
 
   const slot = useMotionValue(selected);
   const offset = useTransform(slot, (value) => `${value * 100}%`);
+  const settling = useRef<ReturnType<typeof animate> | null>(null);
+
+  // En pågående animation måste stoppas innan något annat rör markeringen,
+  // annars skriver den över varje ny position under nästa svep.
+  const glide = (target: number) => {
+    settling.current?.stop();
+    settling.current = animate(slot, target, SPRING);
+  };
 
   useEffect(() => {
-    const controls = animate(slot, selected, SPRING);
-    return () => controls.stop();
-  }, [selected, slot]);
+    glide(selected);
+    // glide rör bara refs och motion-värdet, och är stabil mellan renderingar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   const pitch = () => (trackRef.current?.offsetWidth ?? 0) / options.length;
+
+  // Markeringen ska alltid hamna på en hel plats. Utan det kan den bli
+  // stående mitt emellan när gesten avbryts, till exempel av en scroll.
+  const settle = (target: number) => {
+    glide(target);
+    if (target !== selected) onSelect(target);
+  };
+
+  const cancel = () => {
+    if (!swipe.current) return;
+
+    swipe.current = null;
+    glide(selected);
+  };
 
   const start = (event: ReactPointerEvent) => {
     dragged.current = false;
@@ -67,7 +92,7 @@ export function Segmented({
   const move = (event: ReactPointerEvent) => {
     const from = swipe.current;
     const step = pitch();
-    if (!from || step === 0) return;
+    if (!from || step <= 0) return;
 
     const dx = event.clientX - from.x;
 
@@ -83,10 +108,11 @@ export function Segmented({
 
       from.axis = "x";
       dragged.current = true;
+      settling.current?.stop();
       event.currentTarget.setPointerCapture(event.pointerId);
     }
 
-    slot.set(Math.min(options.length - 1, Math.max(0, selected + dx / step)));
+    slot.set(Math.min(last, Math.max(0, selected + dx / step)));
   };
 
   const end = (event: ReactPointerEvent) => {
@@ -97,13 +123,11 @@ export function Segmented({
 
     const dx = event.clientX - from.x;
     const step = pitch();
-    const far = Math.abs(dx) > step * COMMIT_RATIO;
-    const target = !far
-      ? selected
-      : Math.min(options.length - 1, Math.max(0, selected + (dx > 0 ? 1 : -1)));
+    const far = step > 0 && Math.abs(dx) > step * COMMIT_RATIO;
 
-    animate(slot, target, SPRING);
-    if (target !== selected) onSelect(target);
+    settle(
+      far ? Math.min(last, Math.max(0, selected + (dx > 0 ? 1 : -1))) : selected
+    );
   };
 
   return (
@@ -112,7 +136,8 @@ export function Segmented({
       onPointerDown={start}
       onPointerMove={move}
       onPointerUp={end}
-      onPointerCancel={() => (swipe.current = null)}
+      onPointerCancel={cancel}
+      onLostPointerCapture={cancel}
       // Ett svep får inte också räknas som ett tryck på knappen under fingret
       onClickCapture={(event) => {
         if (!dragged.current) return;
