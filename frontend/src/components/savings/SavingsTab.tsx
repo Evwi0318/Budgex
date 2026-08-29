@@ -144,7 +144,8 @@ export function SavingsTab({
       {hasAccounts && (
         <button
           onClick={() => transferAll.mutate(!allDone)}
-          className={`mb-2 flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-[14px] border px-3.5 py-3 text-[14px] font-extrabold transition active:scale-[0.99] ${
+          disabled={isLocked}
+          className={`mb-2 flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-[14px] border px-3.5 py-3 text-[14px] font-extrabold transition not-disabled:active:scale-[0.99] ${
             allDone
               ? "border-[var(--color-border)] bg-transparent text-[var(--color-text-muted)]"
               : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
@@ -175,10 +176,6 @@ export function SavingsTab({
           }
           footnote={isLocked ? undefined : "Tryck på + för att skapa ett sparkonto."}
         />
-      ) : visible.length === 0 ? (
-        <p className="rounded-[var(--radius-card)] border border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] px-4 py-5 text-center text-[13.5px] font-bold text-[var(--color-mint)]">
-          🎉 Allt är överfört i {monthName}
-        </p>
       ) : (
         visible.map((account) => (
           <SavingsRow

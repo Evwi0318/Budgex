@@ -82,7 +82,8 @@ test("markerar alla som överförda och ångrar det", async ({ page }) => {
 
   await expect(allDone(page)).toBeVisible();
   await expect(allDone(page)).toContainText("Ångra alla överföringar");
-  await expect(page.getByText(/Allt är överfört i /)).toBeVisible();
+  // Knappen är enda kvittot på att allt är överfört — ingen extra rad under den
+  await expect(page.getByText(/Allt är överfört i /)).toHaveCount(0);
 
   await allDone(page).click();
 

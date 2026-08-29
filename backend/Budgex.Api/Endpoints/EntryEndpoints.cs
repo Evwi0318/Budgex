@@ -74,6 +74,14 @@ public static class EntryEndpoints
             entry.Category = category;
             entry.IsAutogiro = kind == EntryKind.Expense && request.IsAutogiro;
 
+            // "Gäller" i formuläret: posten slutar efter den här månaden, eller
+            // fortsätter tills vidare. Utelämnas fältet står valet kvar som det var,
+            // så att en äldre frontend inte av misstag avslutar en post.
+            if (request.Repeats is bool repeats)
+            {
+                entry.To = repeats ? null : key.Next;
+            }
+
             if (ParseScope(request.Scope) is not EntryScopeOption chosen)
             {
                 return BadRequest("Okänd omfattning.");
@@ -206,6 +214,6 @@ public sealed record EntryRequest(
 
 public sealed record UpdateEntryRequest(
     string Kind, string Name, string Category,
-    decimal Amount, bool IsAutogiro, string Scope) : IEntryFields;
+    decimal Amount, bool IsAutogiro, bool? Repeats, string Scope) : IEntryFields;
 
 public sealed record PaidRequest(bool IsPaid);

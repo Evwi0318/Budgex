@@ -63,10 +63,27 @@
 }
 
 @layer base {
+
+    /* Dokumentet scrollar aldrig självt — <main> i skalet är enda scroll-ytan.
+       Utan låset går hela vyn att dra ut ur bild med iOS studsande overscroll. */
+    html,
+    body {
+        height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+    }
+
+    #root {
+        height: 100%;
+    }
+
     body {
         background-color: var(--color-bg);
         color: var(--color-text);
         font-family: var(--font-sans);
+        /* Tar bort dubbeltryck-zoomen och 300 ms fördröjningen på tryck */
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
     }
 
     /* Tabular numbers för alla belopp */
