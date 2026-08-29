@@ -45,12 +45,20 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
             role="dialog"
             aria-modal="true"
             drag="y"
-            // Bara greppstrecket startar draget. Utan det krockar draget med
+            // Bara greppytan startar draget. Utan det krockar draget med
             // formulärets egen scroll så fort innehållet är högre än arket.
             dragListener={false}
             dragControls={dragControls}
-            dragConstraints={{ top: 0 }}
-            dragElastic={{ top: 0, bottom: 0.5 }}
+            // bottom: 0 är det som drar tillbaka arket när draget inte räckte hela
+            // vägen. Utan den ligger arket kvar nere, och skärmen blir bara suddig.
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 1 }}
+            onDragStart={() => {
+              // iOS lämnar annars tangentbordet uppe medan arket dras undan
+              if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+              }
+            }}
             onDragEnd={(_, info) => {
               if (info.offset.y > DISMISS_DISTANCE || info.velocity.y > DISMISS_VELOCITY) {
                 onClose();
@@ -62,10 +70,17 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="relative flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-[var(--radius-hero)] bg-[var(--color-surface)] will-change-transform"
           >
+            {/* Hela överkanten är greppyta, inte bara strecket — den täcker också
+                rubrikraden, som ändå inte går att trycka på. */}
             <div
               onPointerDown={(event) => dragControls.start(event)}
               aria-hidden="true"
-              className="flex shrink-0 cursor-grab touch-none justify-center pt-3.5 pb-4 active:cursor-grabbing"
+              className="absolute inset-x-0 top-0 z-10 h-16 cursor-grab touch-none active:cursor-grabbing"
+            />
+
+            <div
+              aria-hidden="true"
+              className="flex shrink-0 justify-center pt-3.5 pb-4"
             >
               <div className="h-1 w-10 rounded-full bg-[var(--color-border)]" />
             </div>
