@@ -1,4 +1,4 @@
-import { formatKr } from "../../lib/format";
+import { formatKr, formatKrShort } from "../../lib/format";
 
 interface HeroAmountProps {
   value: number;
@@ -12,14 +12,15 @@ export function HeroAmount({ value, label, compact = false }: HeroAmountProps) {
     "hero-amount",
     value < 0 ? "hero-amount--negative" : "",
     compact ? "hero-amount--compact" : "",
-    "font-medium tracking-[-0.03em] tabular-nums",
+    "font-medium tracking-[-0.03em] tabular-nums whitespace-nowrap",
   ]
     .filter(Boolean)
     .join(" ");
 
+  // Etiketten bär hela talet: kortformen är bara till för ögat
   return (
     <span className={classes} aria-label={`${formatKr(value)} ${label}`}>
-      {formatKr(value)}
+      {formatKrShort(value)}
     </span>
   );
 }

@@ -8,6 +8,7 @@ import { PaymentRow } from "../components/home/PaymentRow";
 import { EmptyState } from "../components/home/EmptyState";
 import { AddEntryForm } from "../components/home/AddEntryForm";
 import { EditEntryForm } from "../components/home/EditEntryForm";
+import { ExactAmounts } from "../components/home/ExactAmounts";
 import { SwipeTabs } from "../components/home/SwipeTabs";
 import { SavingsTab } from "../components/savings/SavingsTab";
 import { BottomSheet } from "../components/ui/BottomSheet";
@@ -20,7 +21,7 @@ import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
 import { useSetPaidMutation } from "../hooks/useEntryMutation";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
-import { getMonthName } from "../lib/format";
+import { formatMonthYear, getMonthName } from "../lib/format";
 import { isPast } from "../lib/month";
 import type { EntryScope } from "../hooks/useEntryMutation";
 import type { HomeTab } from "../context/MonthContext";
@@ -61,6 +62,7 @@ export function Home() {
   const [discarding, setDiscarding] = useState(false);
   const [removing, setRemoving] = useState<PlannedEntry | null>(null);
   const [showPaid, setShowPaid] = useState(false);
+  const [inspecting, setInspecting] = useState(false);
 
   const closeAdd = () => {
     setAdding(false);
@@ -286,6 +288,7 @@ export function Home() {
               onSelect={setTab}
               dimmed={isLocked}
               compact={compact}
+              onInspect={() => setInspecting(true)}
             />
           </>
         }
@@ -297,6 +300,13 @@ export function Home() {
       {pending && (
         <div aria-hidden style={{ height: "var(--toast-clearance)" }} />
       )}
+
+      <ExactAmounts
+        summary={summary}
+        monthLabel={formatMonthYear(month, year)}
+        open={inspecting}
+        onClose={() => setInspecting(false)}
+      />
 
       <ProfileButton />
 
