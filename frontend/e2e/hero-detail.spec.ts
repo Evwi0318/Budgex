@@ -93,3 +93,41 @@ test("ett kort tryck på en flik byter flik som vanligt", async ({ page }) => {
   ).toContainText("Inkomst");
   await expect(page.getByRole("dialog", { name: /Exakta belopp/ })).toHaveCount(0);
 });
+
+test("talet kapas, det avrundas aldrig uppåt", async ({ page }) => {
+  await openApp(page, {
+    income: [
+      {
+        id: "i1",
+        kind: "Income",
+        name: "Lön",
+        category: "Salary",
+        amount: 1_376_678,
+        isAutogiro: false,
+        isPaid: false,
+        repeats: true,
+      },
+    ],
+  });
+
+  await expect(page.getByRole("button", { name: /^Inkomst/ })).toContainText(
+    "1,3 mn kr"
+  );
+});
+
+test("ett långtryck kan inte börja markera sidan", async ({ page }) => {
+  await openApp(page);
+
+  const select = await page.evaluate(() => {
+    const field = document.createElement("input");
+    document.body.append(field);
+    const input = getComputedStyle(field).userSelect;
+    field.remove();
+
+    return { body: getComputedStyle(document.body).userSelect, input };
+  });
+
+  expect(select.body).toBe("none");
+  // Fälten måste ändå gå att markera i
+  expect(select.input).toBe("text");
+});
