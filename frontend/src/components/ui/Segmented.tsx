@@ -4,7 +4,11 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 
 const AXIS_LOCK = 8;
 const COMMIT_RATIO = 0.32;
-const SPRING = { type: "spring", damping: 30, stiffness: 380, restDelta: 0.001 } as const;
+/** Lodrätt måste vara tydligt större för att räknas som en scroll och inte ett svep */
+const VERTICAL_BIAS = 1.3;
+// Dämpningen är satt så att fjädern inte svänger förbi målet: markeringen
+// ligger i kanten av spåret, och en översläng syns som att den åker utanför.
+const SPRING = { type: "spring", damping: 45, stiffness: 500 } as const;
 
 const TONES = {
   surface: {
@@ -49,7 +53,12 @@ export function Segmented({
   const dragged = useRef(false);
 
   const slot = useMotionValue(selected);
-  const offset = useTransform(slot, (value) => `${value * 100}%`);
+  // Klamras här och inte bara i gesten: annars kan fjädern ta markeringen
+  // förbi ytterläget ett ögonblick, och då sticker den ut ur spåret.
+  const offset = useTransform(
+    slot,
+    (value) => `${Math.min(last, Math.max(0, value)) * 100}%`
+  );
   const settling = useRef<ReturnType<typeof animate> | null>(null);
 
   // En pågående animation måste stoppas innan något annat rör markeringen,
@@ -100,8 +109,9 @@ export function Segmented({
       const dy = Math.abs(event.clientY - from.y);
       if (Math.abs(dx) < AXIS_LOCK && dy < AXIS_LOCK) return;
 
-      // Lodrätt vinner: annars kan man inte scrolla arket från den här ytan
-      if (Math.abs(dx) <= dy) {
+      // Lodrätt vinner bara när det är tydligt lodrätt — en tumme håller sig
+      // sällan på en rak linje, och svepet ska ändå gå fram
+      if (dy > Math.abs(dx) * VERTICAL_BIAS) {
         swipe.current = null;
         return;
       }
@@ -137,7 +147,12 @@ export function Segmented({
       onPointerMove={move}
       onPointerUp={end}
       onPointerCancel={cancel}
-      onLostPointerCapture={cancel}
+      // setPointerCapture flyttar touch-capture hit från knappen under fingret,
+      // och webbläsaren skickar då lostpointercapture som bubblar upp. Bara
+      // spårets eget tapp betyder att gesten faktiskt är slut.
+      onLostPointerCapture={(event) => {
+        if (event.target === event.currentTarget) cancel();
+      }}
       // Ett svep får inte också räknas som ett tryck på knappen under fingret
       onClickCapture={(event) => {
         if (!dragged.current) return;
