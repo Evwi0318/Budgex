@@ -353,3 +353,36 @@ export const manyExpenses = (count: number): Entry[] =>
       isAutogiro: true,
     })
   );
+
+/**
+ * Riktiga touch-event via CDP. Mus och finger beter sig olika: pointer capture
+ * flyttas, lostpointercapture bubblar, och touch-action avgör om webbläsaren
+ * tar över gesten. Gester måste därför testas som de faktiskt används.
+ */
+export async function touchDrag(
+  page: Page,
+  from: { x: number; y: number },
+  dx: number,
+  dy = 0,
+  steps = 10
+) {
+  const cdp = await page.context().newCDPSession(page);
+
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ x: from.x, y: from.y }],
+  });
+
+  for (let step = 1; step <= steps; step++) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [
+        { x: from.x + (dx * step) / steps, y: from.y + (dy * step) / steps },
+      ],
+    });
+    await page.waitForTimeout(16);
+  }
+
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}

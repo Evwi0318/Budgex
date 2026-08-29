@@ -122,3 +122,24 @@ test("kom-tillbaka efter kasta-frågan tar upp arket igen", async ({ page }) => 
   await expect(form.getByPlaceholder("T.ex. Hyra")).toHaveValue("Ström");
   await expectSettled(form);
 });
+
+test("skärmen går att använda direkt när arket dragits ner", async ({ page }) => {
+  await openApp(page);
+  await fab(page, "Lägg till utgift").click();
+
+  const form = await opened(page, "Ny utgift");
+  const box = (await form.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + 20;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let step = 1; step <= 10; step++) {
+    await page.mouse.move(x, y + (220 * step) / 10, { steps: 2 });
+  }
+  await page.mouse.up();
+
+  // Ingen kvarliggande yta som äter tryck medan arket glider ut
+  await fab(page, "Lägg till utgift").click({ timeout: 450 });
+  await expect(page.getByRole("dialog")).toContainText("Ny utgift");
+});

@@ -11,17 +11,20 @@ export const formatKr = (value: number): string => `${kr.format(value)} kr`;
 /** Bara talet, för ytor där "kr" sätts i egen mindre stil */
 export const formatNumber = (value: number): string => kr.format(value);
 
-const short = new Intl.NumberFormat("sv-SE", {
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
+const tenths = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 });
 
 /** Från en miljon och uppåt får talet inte plats i hero-kortet */
 const SHORT_FROM = 1_000_000;
 
-/** "1,2 mn kr" i stället för "1 234 567 kr" — exakta talet nås med långtryck */
-export const formatKrShort = (value: number): string =>
-  Math.abs(value) >= SHORT_FROM ? `${short.format(value)} kr` : formatKr(value);
+/**
+ * "1,3 mn kr" i stället för "1 376 678 kr" — exakta talet nås med långtryck.
+ * Talet kapas, det avrundas aldrig uppåt: 1 376 678 får inte visas som 1,4 mn.
+ */
+export const formatKrShort = (value: number): string => {
+  if (Math.abs(value) < SHORT_FROM) return formatKr(value);
+
+  return `${tenths.format(Math.trunc(value / 100_000) / 10)} mn kr`;
+};
 
 const monthNames = [
   "januari",

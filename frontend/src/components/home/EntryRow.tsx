@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { SwipeRow } from "./SwipeRow";
 import { categoryOf } from "../../lib/categories";
 import { formatKr } from "../../lib/format";
@@ -12,7 +13,7 @@ interface EntryRowProps {
   onTogglePaid: () => void;
 }
 
-export function EntryRow({
+function Row({
   entry,
   monthName,
   locked,
@@ -101,3 +102,18 @@ export function EntryRow({
     </SwipeRow>
   );
 }
+
+/**
+ * Ett flikbyte ritar om alla tre panelerna, och varje rad är en egen gest med
+ * eget lager — utan den här spärren blev bytet segare ju längre listan var.
+ *
+ * Återanropen jämförs inte: de läser bara posten och låset, och båda finns
+ * bland värdena som jämförs här.
+ */
+export const EntryRow = memo(
+  Row,
+  (before, after) =>
+    before.entry === after.entry &&
+    before.monthName === after.monthName &&
+    before.locked === after.locked
+);

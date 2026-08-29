@@ -84,6 +84,18 @@
         /* Tar bort dubbeltryck-zoomen och 300 ms fördröjningen på tryck */
         touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
+        /* Ett långtryck ska inte börja markera text. Utan det sveper iOS ut en
+           blå markering över halva appen när man håller in på hero-kortet. */
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    /* Fälten ska ändå gå att markera och redigera som vanligt */
+    input,
+    textarea {
+        -webkit-user-select: text;
+        user-select: text;
     }
 
     /* Tabular numbers för alla belopp */

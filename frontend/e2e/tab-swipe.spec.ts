@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { manyExpenses, openApp, openSavings } from "./app";
+import { manyExpenses, openApp, openSavings, touchDrag } from "./app";
 
 const activeTab = (page: Page) =>
   page.locator('button[aria-pressed="true"]').first();
@@ -141,4 +141,13 @@ test("två svep i snabb följd landar rätt och står stilla", async ({ page }) 
   await expect
     .poll(() => deck.evaluate((el) => getComputedStyle(el).transform))
     .toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+});
+
+test("svep med finger byter flik", async ({ page }) => {
+  await openApp(page);
+
+  await touchDrag(page, await heroCentre(page), -160, 8);
+  await page.waitForTimeout(400);
+
+  await expect(activeTab(page)).toContainText("Sparande");
 });
