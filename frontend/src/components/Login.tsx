@@ -37,6 +37,17 @@ export function Login() {
   const navigate = useNavigate();
   const { setAuth } = useAuth();
 
+  // Byte av flik börjar om från tomt: annars ligger e-post, lösenord och ett
+  // felmeddelande från inloggningen kvar i registreringsformuläret, och tvärtom.
+  const chooseMode = (next: Mode) => {
+    if (next === mode) return;
+
+    setMode(next);
+    setEmail("");
+    setPassword("");
+    setError("");
+  };
+
   const post = (path: string) =>
     fetch(`${API_URL}${path}`, {
       method: "POST",
@@ -87,7 +98,7 @@ export function Login() {
           {modes.map(({ id, label }) => (
             <button
               key={id}
-              onClick={() => setMode(id)}
+              onClick={() => chooseMode(id)}
               className={`flex-1 py-2 font-semibold transition ${
                 mode === id
                   ? "text-[var(--color-mint)] border-b-2 border-[var(--color-mint)]"
