@@ -41,12 +41,16 @@ jobs:
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
+      # --cpu-boost ger extra CPU medan containern startar. Tjänsten skalar
+      # ner till noll, och utan boosten tar första anropet efter en stunds
+      # vila flera sekunder. Det kostar inget när ingen använder appen.
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE }} \
             --image "$IMAGE" \
             --region ${{ env.REGION }} \
             --project ${{ env.PROJECT_ID }} \
+            --cpu-boost \
             --quiet
 
       - name: Verify the new revision answers
