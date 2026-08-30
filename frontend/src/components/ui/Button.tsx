@@ -28,7 +28,9 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
-  const baseClasses = "transition-all duration-100 disabled:opacity-50";
+  // Inte transition-all: den tar med bredd, höjd och marginal, som kostar layout
+  const baseClasses =
+    "transition-[opacity,transform,background-color,box-shadow] duration-100 disabled:opacity-50";
 
   return (
     // className plockas ut ur props och läggs sist, annars skulle

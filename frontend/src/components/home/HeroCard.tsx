@@ -176,8 +176,8 @@ function Tab({
       </span>
       <span
         className={`hero-tab-amount mt-2 block tabular-nums whitespace-nowrap font-medium ${tone} ${
-          compact ? "hero-tab-amount--compact" : ""
-        } ${active ? "" : "opacity-50"}`}
+          active ? "" : "opacity-50"
+        }`}
       >
         {formatKrShort(amount)}
       </span>

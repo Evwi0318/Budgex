@@ -127,7 +127,6 @@
         backdrop-filter: var(--blur-hero);
         -webkit-backdrop-filter: var(--blur-hero);
         border: 1px solid var(--color-border);
-        transition: box-shadow .22s var(--ease-hero), padding-top .22s var(--ease-hero);
     }
 
     .hero-card--compact {
@@ -148,16 +147,9 @@
     }
 
     .hero-tab-amount {
-
         font-size: 19px;
-        transition: font-size .26s var(--ease-hero);
         transform: scaleY(1.2);
-        /* 1.5 betyder 50% högre. Justera värdet efter behov. */
         transform-origin: bottom;
-    }
-
-    .hero-tab-amount--compact {
-        font-size: 19px;
     }
 
     /* Fokusring */

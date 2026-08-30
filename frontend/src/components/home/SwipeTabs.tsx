@@ -1,4 +1,4 @@
-import { animate, motion, useMotionValue } from "motion/react";
+import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useRef } from "react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
@@ -52,6 +52,11 @@ export function SwipeTabs({
   const settled = useRef(index);
 
   const x = useMotionValue(0);
+  // Däcket är lika högt som den högsta panelen. Ett permanent lager av den
+  // storleken kostar minne hela tiden — det behövs bara medan det rör sig.
+  const willChange = useTransform(x, (value) =>
+    value === 0 ? "auto" : "transform"
+  );
   const settling = useRef<ReturnType<typeof animate> | null>(null);
 
   const width = () => deckRef.current?.offsetWidth ?? 0;
@@ -182,7 +187,7 @@ export function SwipeTabs({
       {header}
 
       <div ref={deckRef} className="relative overflow-x-clip">
-        <motion.div style={{ x }} className="relative will-change-transform">
+        <motion.div style={{ x, willChange }} className="relative">
           {Array.from({ length: count }, (_, slot) => {
             const offset = slot - index;
 

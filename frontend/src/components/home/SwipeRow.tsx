@@ -20,6 +20,13 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
   // tills raden faktiskt rört sig.
   const revealed = useTransform(x, (value) => (value < -0.5 ? 1 : 0));
 
+  // Eget lager bara medan raden faktiskt rör sig. Ligger will-change kvar
+  // får varje rad ett eget lager i minnet, och en lista på trettio rader blir
+  // trettio lager som kompositorn måste hålla reda på under hela scrollen.
+  const willChange = useTransform(x, (value) =>
+    value === 0 ? "auto" : "transform"
+  );
+
   return (
     <motion.div
       data-no-tab-swipe
@@ -49,7 +56,7 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
 
       <motion.div
         drag={disabled ? false : "x"}
-        style={{ x, touchAction: "pan-y" }}
+        style={{ x, touchAction: "pan-y", willChange }}
         dragConstraints={{ left: -REVEAL, right: 0 }}
         dragElastic={{ left: 0.55, right: 0 }}
         dragMomentum={false}
@@ -63,7 +70,7 @@ export function SwipeRow({ onDelete, disabled = false, children }: SwipeRowProps
           animate(x, 0, SPRING);
           if (full) onDelete();
         }}
-        className="relative will-change-transform"
+        className="relative"
       >
         {children}
       </motion.div>

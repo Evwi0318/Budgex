@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { UIEvent } from "react";
 import { useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
@@ -51,14 +51,21 @@ export function AppShell() {
     setCompact((was) => (was ? top > 10 : top > 24));
   };
 
-  const monthContext: MonthContextValue = {
-    year,
-    month,
-    tab,
-    setTab,
-    goToPrevMonth: () => step(-1),
-    goToNextMonth: () => step(1),
-  };
+  // Ny identitet varje render skulle tvinga om varje läsare av kontexten,
+  // och skalet renderar om vid varje scroll som passerar tröskeln.
+  const monthContext: MonthContextValue = useMemo(
+    () => ({
+      year,
+      month,
+      tab,
+      setTab,
+      goToPrevMonth: () => step(-1),
+      goToNextMonth: () => step(1),
+    }),
+    // step härleds ur year och month, som båda finns med
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [year, month, tab]
+  );
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--color-bg)]">
