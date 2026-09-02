@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   AnimatePresence,
@@ -48,6 +48,26 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
   const dragControls = useDragControls();
   const y = useMotionValue(0);
   const pull = useRef<{ x: number; y: number; atTop: boolean } | null>(null);
+  // Draget mäter upp arket och tvingar fram en layoutberäkning. Görs det vid
+  // monteringen hamnar den i samma bildruta som arket börjar glida upp, och
+  // uppgången tappar bildrutor. Arket hinner ändå upp innan tummen är framme.
+  const [draggable, setDraggable] = useState(false);
+
+  // Monteringen kostar två bildrutor: layout och första målning av ett helt
+  // formulär. Startar rörelsen samtidigt hackar den i just de rutorna. Vänta
+  // ut dem först — arket står ändå under skärmkanten och syns inte.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setReady(true));
+    });
+
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, []);
   const present = useIsPresent();
 
   const beginPull = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -95,9 +115,12 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
         aria-modal={present ? "true" : undefined}
         aria-hidden={present ? undefined : true}
         inert={!present ? true : undefined}
-        drag="y"
+        drag={draggable ? "y" : false}
+        onAnimationComplete={() => setDraggable(true)}
         dragListener={false}
-        dragControls={dragControls}
+        // Motion laddar dragfunktionen så fort dragControls finns, oavsett
+        // drag-flaggan — den måste hållas borta den också.
+        dragControls={draggable ? dragControls : undefined}
         // LÖSNING 2: bottom: 0 tvingar Framer Motion att ta hand om tillbakastudsen
         dragConstraints={{ top: 0, bottom: 0 }}
         // LÖSNING 3: bottom: 1 gör att tummen följs exakt 1:1 så länge man drar nedåt
@@ -120,7 +143,7 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
         // Procent av arkets egen höjd: det är hela vägen arket behöver resa.
         // Viewport-höjden skickar det dubbelt så långt på en halvhög skärm.
         initial={{ y: "100%" }}
-        animate={{ y: 0 }}
+        animate={ready ? { y: 0 } : { y: "100%" }}
         exit={{ y: "100%", transition: EXIT }}
         transition={ENTER}
         className="relative flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-[var(--radius-hero)] bg-[var(--color-surface)] shadow-xl"
