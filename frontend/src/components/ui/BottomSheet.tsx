@@ -12,7 +12,12 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 800;
 const PULL_START = 12;
-const SPRING = { type: "spring", damping: 25, stiffness: 300 } as const;
+const ENTER = { type: "spring", damping: 30, stiffness: 300 } as const;
+/**
+ * Utgången är en kort kurva, inte en fjäder: en fjäder räknas som klar först
+ * när den lagt sig helt, och till dess ligger arket kvar och äter tryck.
+ */
+const EXIT = { duration: 0.22, ease: [0.32, 0.72, 0, 1] } as const;
 
 interface BottomSheetProps {
   open: boolean;
@@ -43,9 +48,27 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
   const dragControls = useDragControls();
   const y = useMotionValue(0);
   const pull = useRef<{ x: number; y: number; atTop: boolean } | null>(null);
+  // Draget mäter upp arket och tvingar fram en layoutberäkning. Görs det vid
+  // monteringen hamnar den i samma bildruta som arket börjar glida upp, och
+  // uppgången tappar bildrutor. Arket hinner ändå upp innan tummen är framme.
+  const [draggable, setDraggable] = useState(false);
+
+  // Monteringen kostar två bildrutor: layout och första målning av ett helt
+  // formulär. Startar rörelsen samtidigt hackar den i just de rutorna. Vänta
+  // ut dem först — arket står ändå under skärmkanten och syns inte.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setReady(true));
+    });
+
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, []);
   const present = useIsPresent();
-  // Säkrar att vi använder rena pixlar istället för "100dvh" (som skapar lagg)
-  const [startY] = useState(() => window.innerHeight);
 
   const beginPull = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as Element).closest('input[type="range"]')) {
@@ -92,9 +115,12 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
         aria-modal={present ? "true" : undefined}
         aria-hidden={present ? undefined : true}
         inert={!present ? true : undefined}
-        drag="y"
+        drag={draggable ? "y" : false}
+        onAnimationComplete={() => setDraggable(true)}
         dragListener={false}
-        dragControls={dragControls}
+        // Motion laddar dragfunktionen så fort dragControls finns, oavsett
+        // drag-flaggan — den måste hållas borta den också.
+        dragControls={draggable ? dragControls : undefined}
         // LÖSNING 2: bottom: 0 tvingar Framer Motion att ta hand om tillbakastudsen
         dragConstraints={{ top: 0, bottom: 0 }}
         // LÖSNING 3: bottom: 1 gör att tummen följs exakt 1:1 så länge man drar nedåt
@@ -114,15 +140,12 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
           }
           // Vi behöver INTE längre anropa `animate(y, 0)` här. dragConstraints sköter det!
         }}
-        // Använder pixel-siffran istället för procent för direkt GPU-koppling
-        initial={{ y: startY }}
-        animate={{ y: 0 }}
-        exit={{
-          y: startY,
-          // Matchar svep-utgången med en spring så den bibehåller farten tummen hade
-          transition: { type: "spring", damping: 25, stiffness: 200 },
-        }}
-        transition={SPRING}
+        // Procent av arkets egen höjd: det är hela vägen arket behöver resa.
+        // Viewport-höjden skickar det dubbelt så långt på en halvhög skärm.
+        initial={{ y: "100%" }}
+        animate={ready ? { y: 0 } : { y: "100%" }}
+        exit={{ y: "100%", transition: EXIT }}
+        transition={ENTER}
         className="relative flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-[var(--radius-hero)] bg-[var(--color-surface)] shadow-xl"
       >
         <div
