@@ -137,10 +137,14 @@ test("två svep i snabb följd landar rätt och står stilla", async ({ page }) 
 
   await expect(activeTab(page)).toContainText("Utgifter");
 
-  const deck = page.locator("div.overflow-x-clip > div").first();
-  await expect
-    .poll(() => deck.evaluate((el) => getComputedStyle(el).transform))
-    .toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+  const deck = page.locator("div.overflow-x-clip").first();
+  const panel = deck.locator("> div > div:not([inert])");
+  const edge = async () =>
+    Math.round((await panel.boundingBox())!.x - (await deck.boundingBox())!.x);
+
+  await expect.poll(edge).toBe(0);
+  await page.waitForTimeout(200);
+  expect(await edge()).toBe(0);
 });
 
 test("svep med finger byter flik", async ({ page }) => {

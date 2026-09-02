@@ -8,7 +8,13 @@ const COMMIT_RATIO = 0.25;
 /** En snabb knyck byter flik tidigare — px per millisekund */
 const FLICK_SPEED = 0.5;
 const FLICK_DISTANCE = 40;
-const SETTLE = { type: "spring", damping: 34, stiffness: 420 } as const;
+const SETTLE = {
+  type: "spring",
+  damping: 41,
+  stiffness: 420,
+  restDelta: 0.0005,
+  restSpeed: 0.01,
+} as const;
 
 interface Gesture {
   x: number;
@@ -37,6 +43,10 @@ interface SwipeTabsProps {
  * Monterades de i takt med svepet skulle panelen man sveper till byggas upp
  * på nytt i samma stund som den blev aktiv — den syntes som en omladdning
  * precis när fingret släpptes.
+ *
+ * Panelerna har fasta platser i däcket och x mäts i flikbredder, inte pixlar.
+ * Ingen position beror alltså på index, så ett byte kan inte hinna slå igenom
+ * en bildruta före omrenderingen och rycka tillbaka den gamla fliken.
  */
 export function SwipeTabs({
   index,
@@ -50,40 +60,40 @@ export function SwipeTabs({
   const gesture = useRef<Gesture | null>(null);
   const swiped = useRef(false);
   const settled = useRef(index);
+  const settling = useRef<ReturnType<typeof animate> | null>(null);
 
-  const x = useMotionValue(0);
+  const x = useMotionValue(-index);
+  const deckX = useTransform(x, (value) => `${value * 100}%`);
+
   // Däcket är lika högt som den högsta panelen. Ett permanent lager av den
   // storleken kostar minne hela tiden — det behövs bara medan det rör sig.
-  const willChange = useTransform(x, (value) =>
-    value === 0 ? "auto" : "transform"
+  const moving = useMotionValue(0);
+  const willChange = useTransform(moving, (value) =>
+    value ? "transform" : "auto"
   );
-  const settling = useRef<ReturnType<typeof animate> | null>(null);
 
   const width = () => deckRef.current?.offsetWidth ?? 0;
 
   // En pågående återgång måste stoppas innan något annat rör x, annars
   // skriver den över varje ny position och svepet hackar.
-  const glide = () => {
+  const glide = (to: number) => {
     settling.current?.stop();
-    settling.current = animate(x, 0, SETTLE);
+    moving.set(1);
+    settling.current = animate(x, to, {
+      ...SETTLE,
+      onComplete: () => moving.set(0),
+    });
   };
 
   // Ett tryck på en flik i hero-kortet ska glida likadant som ett svep
   useEffect(() => {
     if (settled.current === index) return;
 
-    const from = settled.current;
-    const span = width();
     settled.current = index;
-
-    if (span === 0) return;
-
-    settling.current?.stop();
-    x.set(index > from ? span : -span);
-    glide();
-    // glide är stabil mellan renderingar — den rör bara refs och x
+    glide(-index);
+    // glide är stabil mellan renderingar — den rör bara refs och motion-värden
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, x]);
+  }, [index]);
 
   const start = (event: ReactPointerEvent) => {
     // Nollställs före alla avhopp: annars kan ett svep som inte följs av något
@@ -124,6 +134,7 @@ export function SwipeTabs({
       if (from.axis === "x") {
         swiped.current = true;
         settling.current?.stop();
+        moving.set(1);
         event.currentTarget.setPointerCapture(event.pointerId);
       }
     }
@@ -137,7 +148,10 @@ export function SwipeTabs({
       from.lastTime = event.timeStamp;
     }
 
-    x.set(resist(dx, index, count, width()));
+    const span = width();
+    if (span === 0) return;
+
+    x.set(-index + resist(dx, index, count, span) / span);
   };
 
   const end = (event: ReactPointerEvent) => {
@@ -152,16 +166,15 @@ export function SwipeTabs({
     const far = Math.abs(dx) > span * COMMIT_RATIO;
     const step = dx < 0 ? 1 : -1;
     const target = index + step;
+    const next =
+      (far || flick) && target >= 0 && target < count ? target : index;
 
-    if ((far || flick) && target >= 0 && target < count) {
-      // Panelen ligger redan på skärmen — den flyttas bara från grannplatsen
-      // till mitten, och x kompenseras lika mycket så att inget hoppar.
-      settled.current = target;
-      x.set(x.get() + step * span);
-      onIndexChange(target);
+    if (next !== index) {
+      settled.current = next;
+      onIndexChange(next);
     }
 
-    glide();
+    glide(-next);
   };
 
   return (
@@ -171,7 +184,7 @@ export function SwipeTabs({
       onPointerUp={end}
       onPointerCancel={() => {
         gesture.current = null;
-        glide();
+        glide(-index);
       }}
       // Ett svep får inte också räknas som ett tryck där fingret råkade landa
       onClickCapture={(event) => {
@@ -187,32 +200,24 @@ export function SwipeTabs({
       {header}
 
       <div ref={deckRef} className="relative overflow-x-clip">
-        <motion.div style={{ x, willChange }} className="relative">
-          {Array.from({ length: count }, (_, slot) => {
-            const offset = slot - index;
-
-            return (
-              <div
-                key={slot}
-                // Bara den aktiva panelen ligger i flödet och sätter höjden.
-                // De andra hålls utanför både layout och skärmläsare.
-                aria-hidden={offset !== 0 || undefined}
-                inert={offset !== 0}
-                className={
-                  offset === 0
-                    ? "relative"
-                    : "pointer-events-none absolute top-0 left-0 w-full"
-                }
-                style={
-                  offset === 0
-                    ? undefined
-                    : { transform: `translateX(${offset * 100}%)` }
-                }
-              >
-                {children(slot)}
-              </div>
-            );
-          })}
+        <motion.div style={{ x: deckX, willChange }} className="relative">
+          {Array.from({ length: count }, (_, slot) => (
+            <div
+              key={slot}
+              // Bara den aktiva panelen ligger i flödet och sätter höjden.
+              // De andra hålls utanför både layout och skärmläsare.
+              aria-hidden={slot !== index || undefined}
+              inert={slot !== index}
+              className={
+                slot === index
+                  ? "relative"
+                  : "pointer-events-none absolute top-0 w-full"
+              }
+              style={{ left: `${slot * 100}%` }}
+            >
+              {children(slot)}
+            </div>
+          ))}
         </motion.div>
       </div>
     </div>
