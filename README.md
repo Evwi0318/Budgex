@@ -1,14 +1,20 @@
 # Budgex
 
-> A minimalist budget app that answers one question: how much do I have left to spend this month?
+> A minimalistic budget app that answers one question: how much do I have left to spend this month?
 
+[![Live demo](https://img.shields.io/badge/Live%20demo-budgex--omega.vercel.app-3ddc84)](https://budgex-omega.vercel.app)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 
-Budgex is a budgeting app for students and people with mixed income (salary + Swedish student aid, CSN). It calculates safe-to-spend and automatically works out how much to move to each savings account every month. Installable on mobile and available as a desktop web app.
+Budgex is a simple budgeting app for students and people with mixed income. It calculates safe-to-spend and automatically works out how much to move to each savings account every month. It will be Installable on mobile and available as a desktop web app.
 
 <!-- TODO (Fas 7): screenshots / GIF -->
-<!-- TODO (Fas 1): live demo link -->
+
+## Live demo
+
+**https://budgex-omega.vercel.app**
+
+Creating an account takes a few seconds: an email address and a password of at least 8 characters, no confirmation mail. The API runs on Cloud Run and scales to zero, so the first request after an idle period may take a moment while the container starts.
 
 ## Tech stack
 
@@ -18,7 +24,7 @@ Budgex is a budgeting app for students and people with mixed income (salary + Sw
 - **Frontend:** React + TypeScript + Vite + Tailwind CSS (PWA)
 - **Testing:** xUnit, Vitest + React Testing Library
 - **CI/CD:** GitHub Actions
-- **Hosting:** Google Cloud Run (API), Neon (database)
+- **Hosting:** Vercel (frontend), Google Cloud Run (API), Neon (database)
 
 ## Architecture
 
