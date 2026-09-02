@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   AnimatePresence,
@@ -8,15 +8,12 @@ import {
   useMotionValue,
 } from "motion/react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import React from "react";
 
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 800;
 const PULL_START = 12;
 const ENTER = { type: "spring", damping: 30, stiffness: 300 } as const;
-/**
- * Utgången är en kort kurva, inte en fjäder: en fjäder räknas som klar först
- * när den lagt sig helt, och till dess ligger arket kvar och äter tryck.
- */
 const EXIT = { duration: 0.22, ease: [0.32, 0.72, 0, 1] } as const;
 
 interface BottomSheetProps {
@@ -26,82 +23,105 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
+  // Memoize children to prevent re-renders of the sheet content
+  const memoizedChildren = useMemo(() => children, [children]);
+
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
   return createPortal(
     <AnimatePresence>
-      {open && <Sheet onClose={onClose}>{children}</Sheet>}
+      {open && <Sheet onClose={onClose}>{memoizedChildren}</Sheet>}
     </AnimatePresence>,
     document.body,
   );
 }
 
-function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
+// Memoize the Sheet component to avoid re-renders when its parent updates
+const Sheet = React.memo(function Sheet({
+  onClose,
+  children,
+}: Omit<BottomSheetProps, "open">) {
   const dragControls = useDragControls();
   const y = useMotionValue(0);
   const pull = useRef<{ x: number; y: number; atTop: boolean } | null>(null);
-  // Draget mäter upp arket och tvingar fram en layoutberäkning. Görs det vid
-  // monteringen hamnar den i samma bildruta som arket börjar glida upp, och
-  // uppgången tappar bildrutor. Arket hinner ändå upp innan tummen är framme.
-  const [draggable, setDraggable] = useState(false);
 
-  // Monteringen kostar två bildrutor: layout och första målning av ett helt
-  // formulär. Startar rörelsen samtidigt hackar den i just de rutorna. Vänta
-  // ut dem först — arket står ändå under skärmkanten och syns inte.
+  const [draggable, setDraggable] = useState(false);
   const [ready, setReady] = useState(false);
+
+  // Wait two frames before starting the animation to let the sheet mount
   useEffect(() => {
     let inner = 0;
     const outer = requestAnimationFrame(() => {
       inner = requestAnimationFrame(() => setReady(true));
     });
-
     return () => {
       cancelAnimationFrame(outer);
       cancelAnimationFrame(inner);
     };
   }, []);
+
   const present = useIsPresent();
 
-  const beginPull = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const beginPull = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as Element).closest('input[type="range"]')) {
       pull.current = null;
       return;
     }
-
     pull.current = {
       x: event.clientX,
       y: event.clientY,
       atTop: event.currentTarget.scrollTop <= 0,
     };
-  };
+  }, []);
 
-  const trackPull = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const from = pull.current;
-    if (!from?.atTop) return;
+  const trackPull = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const from = pull.current;
+      if (!from?.atTop) return;
 
-    const dy = event.clientY - from.y;
-    if (dy < PULL_START || Math.abs(event.clientX - from.x) > dy) return;
+      const dy = event.clientY - from.y;
+      if (dy < PULL_START || Math.abs(event.clientX - from.x) > dy) {
+        return;
+      }
+      pull.current = null;
+      dragControls.start(event, { snapToCursor: false });
+    },
+    [dragControls],
+  );
 
-    pull.current = null;
-    // LÖSNING 1: snapToCursor: false förhindrar att arket hoppar/teleporteras
-    dragControls.start(event, { snapToCursor: false });
-  };
+  const handleDragEnd = useCallback(
+    (_: unknown, info: { offset: { y: number }; velocity: { y: number } }) => {
+      if (
+        info.offset.y > DISMISS_DISTANCE ||
+        info.velocity.y > DISMISS_VELOCITY
+      ) {
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
+  const handleDragStart = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, []);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center"
       style={present ? undefined : { pointerEvents: "none" }}
     >
+      {/* Backdrop */}
       <motion.button
-        aria-label="Stäng"
+        aria-label="Close"
         onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -110,6 +130,7 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
         className="absolute inset-0 bg-black/60"
       />
 
+      {/* Sheet */}
       <motion.div
         role="dialog"
         aria-modal={present ? "true" : undefined}
@@ -118,36 +139,25 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
         drag={draggable ? "y" : false}
         onAnimationComplete={() => setDraggable(true)}
         dragListener={false}
-        // Motion laddar dragfunktionen så fort dragControls finns, oavsett
-        // drag-flaggan — den måste hållas borta den också.
         dragControls={draggable ? dragControls : undefined}
-        // LÖSNING 2: bottom: 0 tvingar Framer Motion att ta hand om tillbakastudsen
         dragConstraints={{ top: 0, bottom: 0 }}
-        // LÖSNING 3: bottom: 1 gör att tummen följs exakt 1:1 så länge man drar nedåt
         dragElastic={{ top: 0, bottom: 1 }}
-        style={{ y }}
-        onDragStart={() => {
-          if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-          }
+        dragMomentum={false} // Reduce physics calculations during drag
+        style={{
+          y,
+          willChange: "transform",
+          transform: "translateZ(0)", // Force GPU layer
+          contain: "layout style paint", // Isolate layout and paint
         }}
-        onDragEnd={(_, info) => {
-          if (
-            info.offset.y > DISMISS_DISTANCE ||
-            info.velocity.y > DISMISS_VELOCITY
-          ) {
-            onClose();
-          }
-          // Vi behöver INTE längre anropa `animate(y, 0)` här. dragConstraints sköter det!
-        }}
-        // Procent av arkets egen höjd: det är hela vägen arket behöver resa.
-        // Viewport-höjden skickar det dubbelt så långt på en halvhög skärm.
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
         initial={{ y: "100%" }}
         animate={ready ? { y: 0 } : { y: "100%" }}
         exit={{ y: "100%", transition: EXIT }}
         transition={ENTER}
-        className="relative flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-[var(--radius-hero)] bg-[var(--color-surface)] shadow-xl"
+        className="relative flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-[var(--radius-hero)] bg-[var(--color-surface)] shadow-xl will-change-transform"
       >
+        {/* Drag handle area */}
         <div
           onPointerDown={(event) =>
             dragControls.start(event, { snapToCursor: false })
@@ -156,6 +166,7 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
           className="absolute inset-x-0 top-0 z-10 h-16 cursor-grab touch-none active:cursor-grabbing"
         />
 
+        {/* Visual handle */}
         <div
           aria-hidden="true"
           className="flex shrink-0 justify-center pt-3.5 pb-4"
@@ -163,17 +174,20 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
           <div className="h-1 w-10 rounded-full bg-[var(--color-border)]" />
         </div>
 
+        {/* Scrollable content */}
         <div
           onPointerDown={beginPull}
           onPointerMove={trackPull}
           onPointerUp={() => (pull.current = null)}
           onPointerCancel={() => (pull.current = null)}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5"
-          style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))" }}
+          style={{
+            paddingBottom: "calc(2rem + env(safe-area-inset-bottom))",
+          }}
         >
           {children}
         </div>
       </motion.div>
     </div>
   );
-}
+});
