@@ -1,7 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  animate,
   AnimatePresence,
   motion,
   useDragControls,
@@ -13,8 +12,7 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 800;
 const PULL_START = 12;
-const RETURN = { type: "spring", damping: 30, stiffness: 400 } as const;
-const EXIT = { duration: 0.2, ease: [0.32, 0.72, 0, 1] } as const;
+const SPRING = { type: "spring", damping: 25, stiffness: 300 } as const;
 
 interface BottomSheetProps {
   open: boolean;
@@ -46,6 +44,8 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
   const y = useMotionValue(0);
   const pull = useRef<{ x: number; y: number; atTop: boolean } | null>(null);
   const present = useIsPresent();
+  // Säkrar att vi använder rena pixlar istället för "100dvh" (som skapar lagg)
+  const [startY] = useState(() => window.innerHeight);
 
   const beginPull = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as Element).closest('input[type="range"]')) {
@@ -68,7 +68,8 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
     if (dy < PULL_START || Math.abs(event.clientX - from.x) > dy) return;
 
     pull.current = null;
-    dragControls.start(event);
+    // LÖSNING 1: snapToCursor: false förhindrar att arket hoppar/teleporteras
+    dragControls.start(event, { snapToCursor: false });
   };
 
   return (
@@ -81,10 +82,8 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
         onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0, transition: EXIT }}
+        exit={{ opacity: 0, transition: { duration: 0.2 } }}
         transition={{ duration: 0.2 }}
-        // Backdrop-blur borttagen. En solid semi-transparent bakgrund räcker
-        // och frigör GPU-kraft så att arket kan flyga upp mjukt.
         className="absolute inset-0 bg-black/60"
       />
 
@@ -96,7 +95,9 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
         drag="y"
         dragListener={false}
         dragControls={dragControls}
-        dragConstraints={{ top: 0 }}
+        // LÖSNING 2: bottom: 0 tvingar Framer Motion att ta hand om tillbakastudsen
+        dragConstraints={{ top: 0, bottom: 0 }}
+        // LÖSNING 3: bottom: 1 gör att tummen följs exakt 1:1 så länge man drar nedåt
         dragElastic={{ top: 0, bottom: 1 }}
         style={{ y }}
         onDragStart={() => {
@@ -111,21 +112,23 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
           ) {
             onClose();
           }
-
-          animate(y, 0, RETURN);
+          // Vi behöver INTE längre anropa `animate(y, 0)` här. dragConstraints sköter det!
         }}
-        // "100dvh" istället för "100%". Vi flyttar arket utanför skärmen
-        // baserat på fönsterhöjden istället för elementets höjd. Det slipper
-        // trigga en onödig storleksberäkning (reflow) precis när det renderas.
-        initial={{ y: "100dvh" }}
+        // Använder pixel-siffran istället för procent för direkt GPU-koppling
+        initial={{ y: startY }}
         animate={{ y: 0 }}
-        exit={{ y: "100dvh", transition: EXIT }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        // will-change-transform borttagen
-        className="relative flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-[var(--radius-hero)] bg-[var(--color-surface)]"
+        exit={{
+          y: startY,
+          // Matchar svep-utgången med en spring så den bibehåller farten tummen hade
+          transition: { type: "spring", damping: 25, stiffness: 200 },
+        }}
+        transition={SPRING}
+        className="relative flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-[var(--radius-hero)] bg-[var(--color-surface)] shadow-xl"
       >
         <div
-          onPointerDown={(event) => dragControls.start(event)}
+          onPointerDown={(event) =>
+            dragControls.start(event, { snapToCursor: false })
+          }
           aria-hidden="true"
           className="absolute inset-x-0 top-0 z-10 h-16 cursor-grab touch-none active:cursor-grabbing"
         />
