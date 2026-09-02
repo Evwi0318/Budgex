@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   AnimatePresence,
@@ -12,7 +12,12 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 800;
 const PULL_START = 12;
-const SPRING = { type: "spring", damping: 25, stiffness: 300 } as const;
+const ENTER = { type: "spring", damping: 30, stiffness: 300 } as const;
+/**
+ * Utgången är en kort kurva, inte en fjäder: en fjäder räknas som klar först
+ * när den lagt sig helt, och till dess ligger arket kvar och äter tryck.
+ */
+const EXIT = { duration: 0.22, ease: [0.32, 0.72, 0, 1] } as const;
 
 interface BottomSheetProps {
   open: boolean;
@@ -44,8 +49,6 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
   const y = useMotionValue(0);
   const pull = useRef<{ x: number; y: number; atTop: boolean } | null>(null);
   const present = useIsPresent();
-  // Säkrar att vi använder rena pixlar istället för "100dvh" (som skapar lagg)
-  const [startY] = useState(() => window.innerHeight);
 
   const beginPull = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as Element).closest('input[type="range"]')) {
@@ -114,15 +117,12 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
           }
           // Vi behöver INTE längre anropa `animate(y, 0)` här. dragConstraints sköter det!
         }}
-        // Använder pixel-siffran istället för procent för direkt GPU-koppling
-        initial={{ y: startY }}
+        // Procent av arkets egen höjd: det är hela vägen arket behöver resa.
+        // Viewport-höjden skickar det dubbelt så långt på en halvhög skärm.
+        initial={{ y: "100%" }}
         animate={{ y: 0 }}
-        exit={{
-          y: startY,
-          // Matchar svep-utgången med en spring så den bibehåller farten tummen hade
-          transition: { type: "spring", damping: 25, stiffness: 200 },
-        }}
-        transition={SPRING}
+        exit={{ y: "100%", transition: EXIT }}
+        transition={ENTER}
         className="relative flex max-h-[88dvh] w-full max-w-[480px] flex-col rounded-t-[var(--radius-hero)] bg-[var(--color-surface)] shadow-xl"
       >
         <div
