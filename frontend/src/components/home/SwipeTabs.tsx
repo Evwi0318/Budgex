@@ -50,11 +50,22 @@ export function SwipeTabs({
   const x = useMotionValue(-index);
   const deckX = useTransform(x, (value) => `${value * 100}%`);
 
+  // Däcket är lika högt som den högsta panelen. Ett permanent lager av den
+  // storleken kostar minne hela tiden — det behövs bara medan det rör sig.
+  const moving = useMotionValue(0);
+  const willChange = useTransform(moving, (value) =>
+    value ? "transform" : "auto"
+  );
+
   const width = () => deckRef.current?.offsetWidth ?? 0;
 
   const glide = (to: number) => {
     settling.current?.stop();
-    settling.current = animate(x, to, SETTLE);
+    moving.set(1);
+    settling.current = animate(x, to, {
+      ...SETTLE,
+      onComplete: () => moving.set(0),
+    });
   };
 
   useEffect(() => {
@@ -97,6 +108,7 @@ export function SwipeTabs({
       if (from.axis === "x") {
         swiped.current = true;
         settling.current?.stop();
+        moving.set(1);
         event.currentTarget.setPointerCapture(event.pointerId);
       }
     }
@@ -139,12 +151,13 @@ export function SwipeTabs({
       Math.abs(from.speed) > FLICK_SPEED && Math.abs(dx) > FLICK_DISTANCE;
     const far = Math.abs(dx) > span * COMMIT_RATIO;
 
-    // Utgå från fliken vi var på när svepet BÖRJADE, inte vart React tror vi är
-    const startIndex = Math.round(-from.startX);
-    let next = startIndex;
+    // Fliken som redan är beslutad, inte den halvvägs framglidna positionen:
+    // avbryter man en glidning pekar x fortfarande på fliken man lämnade.
+    const current = settled.current;
+    let next = current;
 
     if (far || flick) {
-      next = dx < 0 ? startIndex + 1 : startIndex - 1;
+      next = dx < 0 ? current + 1 : current - 1;
     }
 
     // Se till att vi inte landar utanför arrayen
@@ -165,9 +178,8 @@ export function SwipeTabs({
       onPointerUp={end}
       onPointerCancel={() => {
         if (!gesture.current) return;
-        const startIndex = Math.round(-gesture.current.startX);
         gesture.current = null;
-        glide(-startIndex);
+        glide(-settled.current);
       }}
       onClickCapture={(event) => {
         if (!swiped.current) return;
@@ -181,8 +193,7 @@ export function SwipeTabs({
       {header}
 
       <div ref={deckRef} className="relative overflow-x-clip">
-        {/* willChange borttaget för att förhindra GPU-blinkningar */}
-        <motion.div style={{ x: deckX }} className="relative">
+        <motion.div style={{ x: deckX, willChange }} className="relative">
           {Array.from({ length: count }, (_, slot) => (
             <div
               key={slot}
