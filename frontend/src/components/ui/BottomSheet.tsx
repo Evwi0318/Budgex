@@ -44,12 +44,8 @@ function Sheet({ onClose, children }: Omit<BottomSheetProps, "open">) {
   const y = useMotionValue(0);
   const pull = useRef<{ x: number; y: number; atTop: boolean } | null>(null);
   const present = useIsPresent();
-  const [startY, setStartY] = useState(1000);
-
   // Säkrar att vi använder rena pixlar istället för "100dvh" (som skapar lagg)
-  useEffect(() => {
-    setStartY(window.innerHeight);
-  }, []);
+  const [startY] = useState(() => window.innerHeight);
 
   const beginPull = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as Element).closest('input[type="range"]')) {
