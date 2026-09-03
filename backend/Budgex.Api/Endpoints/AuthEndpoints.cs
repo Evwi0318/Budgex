@@ -1,16 +1,25 @@
+using Budgex.Application.Demo;
 using Budgex.Application.Interfaces;
+using Budgex.Domain.Common;
 using Budgex.Domain.Entities;
 using Budgex.Infrastructure.Identity;
 using Budgex.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace Budgex.Api.Endpoints;
 
 public static class AuthEndpoints
 {
     private const string RefreshTokenCookieName = "refreshToken";
+    private const string DemoEmailSuffix = $"@{DemoData.EmailDomain}";
+    private const int MaxDemoUsersRemovedPerRequest = 20;
+
+    // Ett demokonto är till för ett besök. Det som ligger kvar efter en vecka
+    // används inte längre, och ska inte fylla databasen.
+    private static readonly TimeSpan DemoLifetime = TimeSpan.FromDays(7);
 
     public const string RateLimitPolicy = "auth";
 
@@ -110,6 +119,61 @@ public static class AuthEndpoints
             SetRefreshTokenCookie(httpContext, rawRefreshValue, refreshToken.ExpiresAt);
 
             return Results.Ok(new AuthResponse(accessToken, refreshToken.ExpiresAt));
+        });
+
+        // Ett eget konto per klick, ifyllt med tre månader budget. Delat konto
+        // vore enklare, men två besökare skulle då redigera samma siffror.
+        group.MapPost("/demo", async (
+            UserManager<ApplicationUser> userManager,
+            IUserRepository userRepository,
+            ITokenService tokenService,
+            BudgexDbContext db,
+            HttpContext httpContext) =>
+        {
+            await RemoveStaleDemoUsers(db, userManager);
+
+            var userId = Guid.NewGuid();
+            var email = $"demo-{Guid.NewGuid():N}{DemoEmailSuffix}";
+
+            var applicationUser = new ApplicationUser
+            {
+                Id = userId,
+                UserName = email,
+                Email = email
+            };
+
+            var identityResult = await userManager.CreateAsync(applicationUser, CreateDemoPassword());
+            if (!identityResult.Succeeded)
+            {
+                return Results.Problem("Kunde inte skapa demokontot.", statusCode: 500);
+            }
+
+            var domainUser = new User
+            {
+                Id = userId,
+                Email = email,
+                Name = DemoData.UserName,
+                PasswordHash = string.Empty
+            };
+
+            await userRepository.AddAsync(domainUser);
+
+            var budget = DemoData.Create(userId, MonthKey.From(DateOnly.FromDateTime(DateTime.UtcNow)));
+
+            db.Entries.AddRange(budget.Entries);
+            db.EntryMonthStates.AddRange(budget.EntryStates);
+            db.SavingsAccounts.AddRange(budget.Accounts);
+            db.SavingsMonthStates.AddRange(budget.AccountStates);
+
+            var accessToken = tokenService.CreateAccessToken(domainUser);
+            var (refreshToken, rawRefreshValue) = tokenService.CreateRefreshToken(userId);
+
+            db.RefreshTokens.Add(refreshToken);
+            await db.SaveChangesAsync();
+
+            SetRefreshTokenCookie(httpContext, rawRefreshValue, refreshToken.ExpiresAt);
+
+            return Results.Ok(new DemoResponse(accessToken, refreshToken.ExpiresAt, email));
         });
 
         group.MapPost("/refresh", async (
@@ -232,6 +296,39 @@ public static class AuthEndpoints
         });
     }
 
+    // Ingen kolumn säger när ett demokonto skapades, men dess poster gör det:
+    // saknas färska poster har kontot stått orört sedan besöket.
+    private static async Task RemoveStaleDemoUsers(
+        BudgexDbContext db, UserManager<ApplicationUser> userManager)
+    {
+        var cutoff = DateTime.UtcNow - DemoLifetime;
+
+        var stale = await db.DomainUsers
+            .Where(user => user.Email.EndsWith(DemoEmailSuffix))
+            .Where(user => !db.Entries.Any(entry => entry.UserId == user.Id && entry.CreatedAt > cutoff))
+            .Take(MaxDemoUsersRemovedPerRequest)
+            .ToListAsync();
+
+        if (stale.Count == 0) return;
+
+        db.DomainUsers.RemoveRange(stale);
+        await db.SaveChangesAsync();
+
+        foreach (var user in stale)
+        {
+            var applicationUser = await userManager.FindByIdAsync(user.Id.ToString());
+            if (applicationUser is not null)
+            {
+                await userManager.DeleteAsync(applicationUser);
+            }
+        }
+    }
+
+    // Lösenordet lämnar aldrig servern. Suffixet finns för att Identity kräver
+    // versal, gemen, siffra och specialtecken, vilket base64 inte garanterar.
+    private static string CreateDemoPassword() =>
+        $"{Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))}aA1!";
+
     private static void SetRefreshTokenCookie(HttpContext httpContext, string token, DateTime expiresAt)
     {
         var isDevelopment = httpContext.RequestServices
@@ -260,3 +357,4 @@ public static class AuthEndpoints
 public sealed record RegisterRequest(string Email, string Password);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record AuthResponse(string AccessToken, DateTime RefreshTokenExpiresAt);
+public sealed record DemoResponse(string AccessToken, DateTime RefreshTokenExpiresAt, string Email);
