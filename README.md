@@ -14,7 +14,9 @@ Budgex is a simple budgeting app for students and people with mixed income. It c
 
 **https://budgex-omega.vercel.app**
 
-Creating an account takes a few seconds: an email address and a password of at least 8 characters, no confirmation mail. The API runs on Cloud Run and scales to zero, so the first request after an idle period may take a moment while the container starts.
+Press **Testa demo** on the sign-in screen. No registration: the API creates a throwaway account seeded with three months of a student budget — salary and study grant, rent and bills, two savings accounts with allocation rules — so every screen has something in it. The account is yours alone, so nothing you change there affects anyone else, and it is deleted after a week.
+
+To use the app for real instead, register with an email address and a password of at least 8 characters; there is no confirmation mail. The API runs on Cloud Run and scales to zero, so the first request after an idle period may take a moment while the container starts.
 
 ## Tech stack
 

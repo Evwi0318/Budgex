@@ -11,6 +11,8 @@ const modes = [
 
 type Mode = (typeof modes)[number]["id"];
 
+type Pending = "form" | "demo" | null;
+
 // API:t svarar med { message } vid konflikt och { errors } vid ogiltigt
 // lösenord — båda ska bli en läsbar rad
 function readError(body: unknown): string {
@@ -32,7 +34,7 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [pending, setPending] = useState<Pending>(null);
 
   const navigate = useNavigate();
   const { setAuth } = useAuth();
@@ -56,10 +58,35 @@ export function Login() {
       body: JSON.stringify({ email, password }),
     });
 
+  async function handleDemo() {
+    setError("");
+    setPending("demo");
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/demo`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error("Demot kunde inte startas. Försök igen.");
+
+      const { accessToken, email: demoEmail } = await response.json();
+      setAuth(accessToken, demoEmail);
+      navigate("/");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Nätverksfel. Kontrollera anslutningen."
+      );
+      setPending(null);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setPending("form");
 
     try {
       // Register ger ingen token — den skapar bara kontot, så vi
@@ -85,7 +112,7 @@ export function Login() {
           ? err.message
           : "Nätverksfel. Kontrollera anslutningen."
       );
-      setLoading(false);
+      setPending(null);
     }
   }
 
@@ -141,12 +168,33 @@ export function Login() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={pending !== null}
             className="w-full bg-[var(--color-mint)] text-[var(--color-on-mint)] font-bold py-2 rounded-[var(--radius-pill)] transition hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Laddar..." : modes.find((m) => m.id === mode)?.label}
+            {pending === "form"
+              ? "Laddar..."
+              : modes.find((m) => m.id === mode)?.label}
           </button>
         </form>
+
+        <div className="flex items-center gap-3 my-6 text-[var(--color-text-muted)]">
+          <span className="h-px flex-1 bg-[var(--color-border)]" />
+          <span className="text-sm">eller</span>
+          <span className="h-px flex-1 bg-[var(--color-border)]" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDemo}
+          disabled={pending !== null}
+          className="w-full border border-[var(--color-mint)] text-[var(--color-mint)] font-bold py-2 rounded-[var(--radius-pill)] transition hover:bg-[var(--color-mint-wash)] disabled:opacity-50"
+        >
+          {pending === "demo" ? "Startar demo..." : "Testa demo"}
+        </button>
+
+        <p className="mt-3 text-center text-sm text-[var(--color-text-muted)]">
+          Ett tillfälligt konto med en ifylld budget. Ingen registrering.
+        </p>
       </div>
     </div>
   );
