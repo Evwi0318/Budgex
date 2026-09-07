@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Modal } from "./Modal";
+import { useIsDesktop } from "../../hooks/useIsDesktop";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 const DISMISS_DISTANCE = 120;
@@ -24,6 +26,8 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
+  const isDesktop = useIsDesktop();
+
   // Arket måste ligga kvar monterat medan det glider ut, annars försvinner
   // det tvärt. Det är det AnimatePresence gjorde åt oss förut.
   const [mounted, setMounted] = useState(open);
@@ -40,6 +44,14 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
+
+  if (isDesktop) {
+    return (
+      <Modal open={open} onClose={onClose}>
+        {children}
+      </Modal>
+    );
+  }
 
   if (!mounted) return null;
 

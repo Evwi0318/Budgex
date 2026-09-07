@@ -13,3 +13,12 @@ export const currentMonth = (): Month => {
 export const isPast = (month: Month) => ordinal(month) < ordinal(currentMonth());
 
 export const isFuture = (month: Month) => ordinal(month) > ordinal(currentMonth());
+
+export const shiftMonth = ({ year, month }: Month, steps: number): Month => {
+  const moved = month - 1 + steps;
+
+  return {
+    year: year + Math.floor(moved / 12),
+    month: ((moved % 12) + 12) % 12 + 1,
+  };
+};

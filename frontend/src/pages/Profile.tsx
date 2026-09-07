@@ -35,7 +35,7 @@ export function Profile() {
   const name = profile?.name ?? null;
 
   return (
-    <div className="px-4 py-6">
+    <div className="mx-auto w-full max-w-[560px] px-4 py-6 lg:px-6 lg:py-10">
       <div className="mb-6 flex items-center gap-2">
         <Link
           to="/"

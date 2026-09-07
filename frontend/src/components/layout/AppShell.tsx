@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { UIEvent } from "react";
 import { useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { MonthContext } from "../../context/MonthContext";
+import { DesktopTopBar } from "../desktop/DesktopTopBar";
+import { useIsDesktop } from "../../hooks/useIsDesktop";
 import { currentMonth } from "../../lib/month";
 import type { HomeTab, MonthContextValue } from "../../context/MonthContext";
 
@@ -13,6 +15,7 @@ import type { HomeTab, MonthContextValue } from "../../context/MonthContext";
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
   const [{ year, month }, setMonth] = useState(currentMonth);
   const [scrolled, setScrolled] = useState(false);
   const [compact, setCompact] = useState(false);
@@ -57,11 +60,26 @@ export function AppShell() {
       setTab,
       goToPrevMonth: () => step(-1),
       goToNextMonth: () => step(1),
+      goToMonth: setMonth,
     }),
     // step härleds ur year och month, som båda finns med
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [year, month, tab]
   );
+
+  if (isDesktop) {
+    return (
+      <div className="flex h-[100dvh] flex-col bg-[var(--color-bg)]">
+        <MonthContext.Provider value={monthContext}>
+          <DesktopTopBar />
+
+          <main className="desktop-scroll min-h-0 flex-1 overflow-y-auto">
+            {outlet}
+          </main>
+        </MonthContext.Provider>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--color-bg)]">
