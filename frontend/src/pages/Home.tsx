@@ -23,13 +23,12 @@ import { useSetPaidMutation } from "../hooks/useEntryMutation";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import { formatMonthYear, getMonthName } from "../lib/format";
 import { isPast } from "../lib/month";
+import { withoutEntry } from "../lib/summary";
+import { useIsDesktop } from "../hooks/useIsDesktop";
+import { DesktopHome } from "./DesktopHome";
 import type { EntryScope } from "../hooks/useEntryMutation";
 import type { HomeTab } from "../context/MonthContext";
-import type {
-  MonthPlan,
-  MonthSummary,
-  PlannedEntry,
-} from "../hooks/useMonthPlanQuery";
+import type { MonthPlan, PlannedEntry } from "../hooks/useMonthPlanQuery";
 
 /** Sparande är ingen posttyp — där det behövs en riktig EntryKind härleds den */
 const kindOf = (tab: HomeTab) => (tab === "Income" ? "Income" : "Expense");
@@ -38,6 +37,10 @@ const kindOf = (tab: HomeTab) => (tab === "Income" ? "Income" : "Expense");
 const TABS: HomeTab[] = ["Income", "Expense", "Savings"];
 
 export function Home() {
+  return useIsDesktop() ? <DesktopHome /> : <MobileHome />;
+}
+
+function MobileHome() {
   const { year, month, tab, setTab, goToPrevMonth, goToNextMonth } = useMonth();
   // Skalet äger scroll-ytan och säger till när kortet ska krympa
   const { compact } = useOutletContext<{ compact: boolean }>();
@@ -426,24 +429,6 @@ export function Home() {
       />
     </>
   );
-}
-
-/**
- * Hero-kortet räknar bort en post så fort den tagits bort, inte först när
- * raderingen gått igenom. Ångrar man kommer summan tillbaka lika snabbt.
- */
-function withoutEntry(summary: MonthSummary, entry: PlannedEntry): MonthSummary {
-  return entry.kind === "Income"
-    ? {
-        ...summary,
-        income: summary.income - entry.amount,
-        safeToSpend: summary.safeToSpend - entry.amount,
-      }
-    : {
-        ...summary,
-        totalExpenses: summary.totalExpenses - entry.amount,
-        safeToSpend: summary.safeToSpend + entry.amount,
-      };
 }
 
 interface EmptyProps {

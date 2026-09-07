@@ -1,4 +1,5 @@
 import { createContext } from "react";
+import type { Month } from "../lib/month";
 
 /**
  * Vilken flik som visas i hero-kortet. Sparande är inte en posttyp, så det
@@ -14,6 +15,7 @@ export interface MonthContextValue {
   setTab: (tab: HomeTab) => void;
   goToPrevMonth: () => void;
   goToNextMonth: () => void;
+  goToMonth: (month: Month) => void;
 }
 
 // Egen fil utan komponenter, av samma skäl som AuthContext
