@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Label } from "../ui/Label";
+import { SheetActions, sheetField } from "../ui/SheetActions";
 import { useUpdateNameMutation } from "../../hooks/useProfileQuery";
 
 interface NameFormProps {
@@ -29,7 +30,7 @@ export function NameForm({ current, onDone }: NameFormProps) {
           maxLength={60}
           autoFocus
           placeholder="Evan Wibom"
-          className="h-[46px] w-full rounded-xl border border-transparent bg-[var(--color-surface-2)] px-3.5 text-[15px] font-bold outline-none focus:border-[var(--color-mint-dim)] placeholder:font-semibold placeholder:text-[var(--color-text-faint)]"
+          className={sheetField}
         />
       </label>
 
@@ -43,22 +44,11 @@ export function NameForm({ current, onDone }: NameFormProps) {
         </p>
       )}
 
-      <div className="flex gap-2.5">
-        <button
-          type="button"
-          onClick={onDone}
-          className="h-12 flex-1 rounded-xl bg-[var(--color-surface-2)] text-[15px] font-extrabold text-[var(--color-text-muted)] transition active:scale-[0.98]"
-        >
-          Avbryt
-        </button>
-        <button
-          type="submit"
-          disabled={save.isPending}
-          className="h-12 flex-1 rounded-xl bg-[var(--color-mint)] text-[15px] font-extrabold text-[var(--color-on-mint)] transition active:scale-[0.98] disabled:opacity-35"
-        >
-          {save.isPending ? "Sparar" : "Spara"}
-        </button>
-      </div>
+      <SheetActions
+        onCancel={onDone}
+        saveLabel={save.isPending ? "Sparar" : "Spara"}
+        disabled={save.isPending}
+      />
     </form>
   );
 }

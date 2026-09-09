@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Label } from "../ui/Label";
+import { SheetActions, sheetField } from "../ui/SheetActions";
 import { useChangePasswordMutation } from "../../hooks/useProfileQuery";
 
 const MIN_LENGTH = 8;
@@ -50,22 +51,17 @@ export function PasswordForm({ onDone }: PasswordFormProps) {
         </p>
       )}
 
-      <div className="flex gap-2.5">
-        <button
-          type="button"
-          onClick={onDone}
-          className="h-12 flex-1 rounded-xl bg-[var(--color-surface-2)] text-[15px] font-extrabold text-[var(--color-text-muted)] transition active:scale-[0.98]"
-        >
-          Avbryt
-        </button>
-        <button
-          type="submit"
-          disabled={!canSave || change.isPending}
-          className="h-12 flex-1 rounded-xl bg-[var(--color-mint)] text-[15px] font-extrabold text-[var(--color-on-mint)] transition active:scale-[0.98] disabled:opacity-35"
-        >
-          {change.isPending ? "Byter" : tooShort ? `Minst ${MIN_LENGTH} tecken` : "Byt"}
-        </button>
-      </div>
+      <SheetActions
+        onCancel={onDone}
+        saveLabel={
+          change.isPending
+            ? "Byter"
+            : tooShort
+              ? `Minst ${MIN_LENGTH} tecken`
+              : "Byt"
+        }
+        disabled={!canSave || change.isPending}
+      />
     </form>
   );
 }
@@ -84,7 +80,7 @@ function Field({ value, onChange, autoFocus = false }: FieldProps) {
       onChange={(event) => onChange(event.target.value)}
       autoFocus={autoFocus}
       autoComplete={autoFocus ? "current-password" : "new-password"}
-      className="h-[46px] w-full rounded-xl border border-transparent bg-[var(--color-surface-2)] px-3.5 text-[15px] font-bold outline-none focus:border-[var(--color-mint-dim)]"
+      className={sheetField}
     />
   );
 }
