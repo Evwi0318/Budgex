@@ -1,13 +1,11 @@
 import { memo } from "react";
 import { SwipeRow } from "./SwipeRow";
 import { categoryOf } from "../../lib/categories";
+import { entryNote, isTickedOff, sameRow } from "../../lib/entry";
 import { formatKr } from "../../lib/format";
-import type { PlannedEntry } from "../../hooks/useMonthPlanQuery";
+import type { EntryRowShape } from "../../lib/entry";
 
-interface EntryRowProps {
-  entry: PlannedEntry;
-  monthName: string;
-  locked: boolean;
+interface EntryRowProps extends EntryRowShape {
   onOpen: () => void;
   onDelete: () => void;
   onTogglePaid: () => void;
@@ -23,13 +21,7 @@ function Row({
 }: EntryRowProps) {
   const category = categoryOf(entry.kind, entry.category);
   const isExpense = entry.kind === "Expense";
-  const paid = isExpense && !entry.isAutogiro && entry.isPaid;
-
-  const note = entry.isAutogiro
-    ? "Autogiro · Varje månad"
-    : entry.repeats
-      ? "Varje månad"
-      : `Bara ${monthName}`;
+  const paid = isTickedOff(entry);
 
   return (
     <SwipeRow onDelete={onDelete} disabled={locked}>
@@ -71,13 +63,15 @@ function Row({
         >
           <span
             className={`block truncate text-[15px] font-bold ${
-              paid ? "line-through decoration-[var(--color-text-faint)] opacity-50" : ""
+              paid
+                ? "line-through decoration-[var(--color-text-faint)] opacity-50"
+                : ""
             }`}
           >
             {entry.name}
           </span>
           <span className="mt-px block text-[11.5px] text-[var(--color-text-faint)]">
-            {note}
+            {entryNote(entry, monthName)}
           </span>
         </button>
 
@@ -103,17 +97,4 @@ function Row({
   );
 }
 
-/**
- * Ett flikbyte ritar om alla tre panelerna, och varje rad är en egen gest med
- * eget lager — utan den här spärren blev bytet segare ju längre listan var.
- *
- * Återanropen jämförs inte: de läser bara posten och låset, och båda finns
- * bland värdena som jämförs här.
- */
-export const EntryRow = memo(
-  Row,
-  (before, after) =>
-    before.entry === after.entry &&
-    before.monthName === after.monthName &&
-    before.locked === after.locked
-);
+export const EntryRow = memo(Row, sameRow);
