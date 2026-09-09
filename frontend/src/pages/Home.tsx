@@ -4,36 +4,29 @@ import { useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroCard } from "../components/home/HeroCard";
 import { EntryRow } from "../components/home/EntryRow";
+import { EntryDialogs } from "../components/home/EntryDialogs";
 import { PaymentRow } from "../components/home/PaymentRow";
 import { EmptyState } from "../components/home/EmptyState";
-import { AddEntryForm } from "../components/home/AddEntryForm";
-import { EditEntryForm } from "../components/home/EditEntryForm";
 import { ExactAmounts } from "../components/home/ExactAmounts";
 import { SwipeTabs } from "../components/home/SwipeTabs";
 import { SavingsTab } from "../components/savings/SavingsTab";
-import { BottomSheet } from "../components/ui/BottomSheet";
 import { Fab } from "../components/ui/Fab";
 import { ProfileButton } from "../components/ui/ProfileButton";
-import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { UndoToast } from "../components/ui/UndoToast";
 import { useMonth } from "../hooks/useMonth";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
+import { useEntryEditor } from "../hooks/useEntryEditor";
 import { useSetPaidMutation } from "../hooks/useEntryMutation";
-import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import { formatMonthYear, getMonthName } from "../lib/format";
 import { isPast } from "../lib/month";
-import { withoutEntry } from "../lib/summary";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { DesktopHome } from "./DesktopHome";
-import type { EntryScope } from "../hooks/useEntryMutation";
 import type { HomeTab } from "../context/MonthContext";
-import type { MonthPlan, PlannedEntry } from "../hooks/useMonthPlanQuery";
+import type { MonthPlan } from "../hooks/useMonthPlanQuery";
 
 /** Sparande är ingen posttyp — där det behövs en riktig EntryKind härleds den */
 const kindOf = (tab: HomeTab) => (tab === "Income" ? "Income" : "Expense");
 
-/** Ordningen i hero-kortet, och därmed svepets ordning */
 const TABS: HomeTab[] = ["Income", "Expense", "Savings"];
 
 export function Home() {
@@ -42,7 +35,6 @@ export function Home() {
 
 function MobileHome() {
   const { year, month, tab, setTab, goToPrevMonth, goToNextMonth } = useMonth();
-  // Skalet äger scroll-ytan och säger till när kortet ska krympa
   const { compact } = useOutletContext<{ compact: boolean }>();
 
   const { data: plan, isLoading } = useMonthPlanQuery(year, month);
@@ -51,70 +43,15 @@ function MobileHome() {
   const { isClosed, isLocked, unlock, relock } = useMonthLock(year, month);
   const setPaid = useSetPaidMutation(year, month);
   const togglePaid = setPaid.mutate;
-  const { pending, removed, schedule, undo } = useUndoableDelete(
-    year,
-    month,
-    plan,
-  );
 
-  const [adding, setAdding] = useState(false);
-  const [addDirty, setAddDirty] = useState(false);
-  const [addDiscarding, setAddDiscarding] = useState(false);
+  const editor = useEntryEditor(year, month, plan);
+  const { summary, removed, pending, openEdit, requestRemove } = editor;
+
   const [addingSavings, setAddingSavings] = useState(false);
-  const [editing, setEditing] = useState<PlannedEntry | null>(null);
-  const [editDirty, setEditDirty] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
-  const [removing, setRemoving] = useState<PlannedEntry | null>(null);
   const [showPaid, setShowPaid] = useState(false);
   const [inspecting, setInspecting] = useState(false);
 
-  const closeAdd = () => {
-    setAdding(false);
-    setAddDirty(false);
-    setAddDiscarding(false);
-  };
-
-  const requestCloseAdd = () =>
-    addDirty ? setAddDiscarding(true) : closeAdd();
-
-  const closeEdit = useCallback(() => {
-    setEditing(null);
-    setEditDirty(false);
-    setDiscarding(false);
-  }, []);
-
-  const requestCloseEdit = () =>
-    editDirty ? setDiscarding(true) : closeEdit();
-
-  const requestRemove = useCallback(
-    (entry: PlannedEntry) => {
-      closeEdit();
-
-      if (entry.repeats) {
-        setRemoving(entry);
-        return;
-      }
-
-      schedule(entry, "Onwards");
-    },
-    [closeEdit, schedule],
-  );
-
   const closeSavings = useCallback(() => setAddingSavings(false), []);
-
-  const confirmRemove = (scope: EntryScope) => {
-    if (!removing) return;
-
-    schedule(removing, scope);
-    setRemoving(null);
-  };
-
-  // Borttagna poster försvinner ur både listan och hero-kortet direkt, redan
-  // innan raderingen skickats — annars står summan kvar hela ångra-fönstret ut.
-  const summary = useMemo(
-    () => (plan ? removed.reduce(withoutEntry, plan.summary) : null),
-    [plan, removed],
-  );
 
   /**
    * Flikarnas innehåll byggs bara om när något de visar har ändrats. Ett
@@ -129,7 +66,7 @@ function MobileHome() {
 
     const incomeEntries = plan.income.filter((entry) => !hidden.has(entry.id));
     const expenseEntries = plan.expenses.filter(
-      (entry) => !hidden.has(entry.id),
+      (entry) => !hidden.has(entry.id)
     );
 
     // Manuellt ibockade utgifter göms i en egen bubbla. Autogiro räknas alltid
@@ -205,9 +142,7 @@ function MobileHome() {
                       : "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
                   }`}
                 >
-                  {isLocked
-                    ? "🔒 Avslutad — lås upp"
-                    : "🔓 Upplåst — lås igen"}
+                  {isLocked ? "🔒 Avslutad — lås upp" : "🔓 Upplåst — lås igen"}
                 </button>
               )}
 
@@ -245,7 +180,7 @@ function MobileHome() {
                 entry={entry}
                 monthName={monthName}
                 locked={isLocked}
-                onOpen={() => !isLocked && setEditing(entry)}
+                onOpen={() => !isLocked && openEdit(entry)}
                 onDelete={() => requestRemove(entry)}
                 onTogglePaid={() =>
                   togglePaid({ id: entry.id, isPaid: !entry.isPaid })
@@ -278,6 +213,7 @@ function MobileHome() {
     showPaid,
     addingSavings,
     closeSavings,
+    openEdit,
     requestRemove,
     togglePaid,
   ]);
@@ -298,9 +234,6 @@ function MobileHome() {
       </p>
     );
   }
-
-  const monthName = getMonthName(month);
-  const removingNoun = removing?.kind === "Income" ? "Inkomsten" : "Utgiften";
 
   return (
     <>
@@ -354,79 +287,14 @@ function MobileHome() {
         <Fab
           tab={tab}
           onClick={() =>
-            tab === "Savings" ? setAddingSavings(true) : setAdding(true)
+            tab === "Savings"
+              ? setAddingSavings(true)
+              : editor.openAdd(kindOf(tab))
           }
         />
       )}
 
-      <BottomSheet open={adding} onClose={requestCloseAdd}>
-        <AddEntryForm
-          year={year}
-          month={month}
-          kind={kindOf(tab)}
-          onSaved={closeAdd}
-          onDirtyChange={setAddDirty}
-        />
-      </BottomSheet>
-
-      <ConfirmDialog
-        open={addDiscarding}
-        title="Kasta ändringarna?"
-        body={`Den nya ${tab === "Income" ? "inkomsten" : "utgiften"} sparas inte.`}
-        actions={[
-          { label: "Kasta", tone: "danger" },
-          { label: "Fortsätt skriva", tone: "alt" },
-        ]}
-        onPick={(index) => (index === 0 ? closeAdd() : setAddDiscarding(false))}
-        onCancel={() => setAddDiscarding(false)}
-      />
-
-      <BottomSheet open={editing !== null} onClose={requestCloseEdit}>
-        {editing && (
-          <EditEntryForm
-            year={year}
-            month={month}
-            entry={editing}
-            onSaved={closeEdit}
-            onRemove={() => requestRemove(editing)}
-            onDirtyChange={setEditDirty}
-          />
-        )}
-      </BottomSheet>
-
-      <ConfirmDialog
-        open={discarding}
-        title="Kasta ändringarna?"
-        body={`Ändringarna av ${editing?.name ?? ""} sparas inte.`}
-        actions={[
-          { label: "Kasta", tone: "danger" },
-          { label: "Fortsätt skriva", tone: "alt" },
-        ]}
-        onPick={(index) => (index === 0 ? closeEdit() : setDiscarding(false))}
-        onCancel={() => setDiscarding(false)}
-      />
-
-      <UndoToast
-        message={
-          pending
-            ? `${pending.entry.kind === "Income" ? "Inkomsten" : "Utgiften"} ${pending.entry.name} borttagen`
-            : null
-        }
-        onUndo={undo}
-      />
-
-      <ConfirmDialog
-        open={removing !== null}
-        title={`Ta bort ${removing?.name ?? ""}?`}
-        body={`${removingNoun} återkommer varje månad.`}
-        actions={[
-          { label: `Bara ${monthName} ${year}` },
-          { label: "Den här och kommande månader", tone: "alt" },
-        ]}
-        cancelLabel="Avbryt"
-        onPick={(index) => confirmRemove(index === 0 ? "Month" : "Onwards")}
-        onCancel={() => setRemoving(null)}
-      />
+      <EntryDialogs editor={editor} />
     </>
   );
 }

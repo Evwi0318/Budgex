@@ -1,6 +1,6 @@
 import { formatKr, getMonthName } from "./format";
 import type { RuleType } from "../hooks/useSavingsQuery";
-import { currentMonth } from "./month";
+import { currentMonth, shiftMonth } from "./month";
 
 export interface Draft {
   ruleType: RuleType;
@@ -54,8 +54,16 @@ export function goalProgress(
 }
 
 function etaMonth(monthsAhead: number): string {
-  const { year, month } = currentMonth();
-  const shifted = month - 1 + monthsAhead;
+  const { year, month } = shiftMonth(currentMonth(), monthsAhead);
 
-  return `${getMonthName((shifted % 12) + 1)} ${year + Math.floor(shifted / 12)}`;
+  return `${getMonthName(month)} ${year}`;
 }
+
+export const overAllocationText = (
+  name: string,
+  allocated: number,
+  available: number
+): string =>
+  available === 0
+    ? `${name} gav 0 kr den här månaden`
+    : `Du fördelar ${formatKr(allocated)} från ${name} som ger ${formatKr(available)}`;

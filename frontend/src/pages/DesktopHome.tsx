@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { Allocation } from "../components/desktop/Allocation";
 import { MonthTrend } from "../components/desktop/MonthTrend";
@@ -9,25 +9,17 @@ import {
   GhostButton,
   SectionHeader,
 } from "../components/desktop/SectionHeader";
-import { AddEntryForm } from "../components/home/AddEntryForm";
-import { EditEntryForm } from "../components/home/EditEntryForm";
+import { EntryDialogs } from "../components/home/EntryDialogs";
 import { EmptyState } from "../components/home/EmptyState";
 import { PaymentRow } from "../components/home/PaymentRow";
-import { BottomSheet } from "../components/ui/BottomSheet";
-import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { UndoToast } from "../components/ui/UndoToast";
 import { useMonth } from "../hooks/useMonth";
 import { useMonthPlanQuery } from "../hooks/useMonthPlanQuery";
 import { useMonthLock } from "../hooks/useMonthLock";
+import { useEntryEditor } from "../hooks/useEntryEditor";
 import { useSetPaidMutation } from "../hooks/useEntryMutation";
 import { useSavingsQuery } from "../hooks/useSavingsQuery";
 import { useTrendQuery } from "../hooks/useTrendQuery";
-import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import { getMonthName } from "../lib/format";
-import { withoutEntry } from "../lib/summary";
-import type { EntryKind } from "../lib/categories";
-import type { EntryScope } from "../hooks/useEntryMutation";
-import type { PlannedEntry } from "../hooks/useMonthPlanQuery";
 
 export function DesktopHome() {
   const { year, month, goToMonth } = useMonth();
@@ -39,58 +31,10 @@ export function DesktopHome() {
   const togglePaid = setPaid.mutate;
   const trend = useTrendQuery();
 
-  const { pending, removed, schedule, undo } = useUndoableDelete(
-    year,
-    month,
-    plan
-  );
+  const editor = useEntryEditor(year, month, plan);
+  const { summary, removed, openAdd, openEdit } = editor;
 
-  const [adding, setAdding] = useState<EntryKind | null>(null);
-  const [addDirty, setAddDirty] = useState(false);
-  const [addDiscarding, setAddDiscarding] = useState(false);
-  const [editing, setEditing] = useState<PlannedEntry | null>(null);
-  const [editDirty, setEditDirty] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
-  const [removing, setRemoving] = useState<PlannedEntry | null>(null);
   const [showPaid, setShowPaid] = useState(false);
-
-  const closeAdd = () => {
-    setAdding(null);
-    setAddDirty(false);
-    setAddDiscarding(false);
-  };
-
-  const closeEdit = useCallback(() => {
-    setEditing(null);
-    setEditDirty(false);
-    setDiscarding(false);
-  }, []);
-
-  const requestRemove = useCallback(
-    (entry: PlannedEntry) => {
-      closeEdit();
-
-      if (entry.repeats) {
-        setRemoving(entry);
-        return;
-      }
-
-      schedule(entry, "Onwards");
-    },
-    [closeEdit, schedule]
-  );
-
-  const confirmRemove = (scope: EntryScope) => {
-    if (!removing) return;
-
-    schedule(removing, scope);
-    setRemoving(null);
-  };
-
-  const summary = useMemo(
-    () => (plan ? removed.reduce(withoutEntry, plan.summary) : null),
-    [plan, removed]
-  );
 
   if (isLoading) {
     return (
@@ -125,8 +69,6 @@ export function DesktopHome() {
     .filter((account) => !account.isTransferred)
     .reduce((sum, account) => sum + account.amount, 0);
 
-  const removingNoun = removing?.kind === "Income" ? "Inkomsten" : "Utgiften";
-
   return (
     <Page>
       <section className="grid gap-7 py-9 min-[1080px]:grid-cols-[minmax(0,1fr)_minmax(360px,46%)] min-[1080px]:items-end min-[1080px]:gap-12 min-[1080px]:pt-10">
@@ -152,13 +94,16 @@ export function DesktopHome() {
             tone="expense"
           >
             {isClosed && (
-              <GhostButton onClick={isLocked ? unlock : relock} active={!isLocked}>
+              <GhostButton
+                onClick={isLocked ? unlock : relock}
+                active={!isLocked}
+              >
                 {isLocked ? "🔒 Avslutad — lås upp" : "🔓 Upplåst — lås igen"}
               </GhostButton>
             )}
 
             {!isLocked && (
-              <AddButton onClick={() => setAdding("Expense")}>Ny post</AddButton>
+              <AddButton onClick={() => openAdd("Expense")}>Ny post</AddButton>
             )}
 
             {paidExpenses.length > 0 && (
@@ -197,7 +142,7 @@ export function DesktopHome() {
                   entry={entry}
                   monthName={monthName}
                   locked={isLocked}
-                  onOpen={() => setEditing(entry)}
+                  onOpen={() => openEdit(entry)}
                   onTogglePaid={() =>
                     togglePaid({ id: entry.id, isPaid: !entry.isPaid })
                   }
@@ -213,7 +158,7 @@ export function DesktopHome() {
           <section className="min-w-0">
             <SectionHeader title="Inkomst" count={income.length} tone="income">
               {!isLocked && (
-                <AddButton onClick={() => setAdding("Income")}>
+                <AddButton onClick={() => openAdd("Income")}>
                   Lägg till
                 </AddButton>
               )}
@@ -232,7 +177,7 @@ export function DesktopHome() {
                   entry={entry}
                   monthName={monthName}
                   locked={isLocked}
-                  onOpen={() => setEditing(entry)}
+                  onOpen={() => openEdit(entry)}
                 />
               ))
             )}
@@ -248,82 +193,7 @@ export function DesktopHome() {
         </div>
       </div>
 
-      <BottomSheet
-        open={adding !== null}
-        onClose={() => (addDirty ? setAddDiscarding(true) : closeAdd())}
-      >
-        {adding && (
-          <AddEntryForm
-            year={year}
-            month={month}
-            kind={adding}
-            onSaved={closeAdd}
-            onDirtyChange={setAddDirty}
-          />
-        )}
-      </BottomSheet>
-
-      <ConfirmDialog
-        open={addDiscarding}
-        title="Kasta ändringarna?"
-        body={`Den nya ${adding === "Income" ? "inkomsten" : "utgiften"} sparas inte.`}
-        actions={[
-          { label: "Kasta", tone: "danger" },
-          { label: "Fortsätt skriva", tone: "alt" },
-        ]}
-        onPick={(index) => (index === 0 ? closeAdd() : setAddDiscarding(false))}
-        onCancel={() => setAddDiscarding(false)}
-      />
-
-      <BottomSheet
-        open={editing !== null}
-        onClose={() => (editDirty ? setDiscarding(true) : closeEdit())}
-      >
-        {editing && (
-          <EditEntryForm
-            year={year}
-            month={month}
-            entry={editing}
-            onSaved={closeEdit}
-            onRemove={() => requestRemove(editing)}
-            onDirtyChange={setEditDirty}
-          />
-        )}
-      </BottomSheet>
-
-      <ConfirmDialog
-        open={discarding}
-        title="Kasta ändringarna?"
-        body={`Ändringarna av ${editing?.name ?? ""} sparas inte.`}
-        actions={[
-          { label: "Kasta", tone: "danger" },
-          { label: "Fortsätt skriva", tone: "alt" },
-        ]}
-        onPick={(index) => (index === 0 ? closeEdit() : setDiscarding(false))}
-        onCancel={() => setDiscarding(false)}
-      />
-
-      <ConfirmDialog
-        open={removing !== null}
-        title={`Ta bort ${removing?.name ?? ""}?`}
-        body={`${removingNoun} återkommer varje månad.`}
-        actions={[
-          { label: `Bara ${monthName} ${year}` },
-          { label: "Den här och kommande månader", tone: "alt" },
-        ]}
-        cancelLabel="Avbryt"
-        onPick={(index) => confirmRemove(index === 0 ? "Month" : "Onwards")}
-        onCancel={() => setRemoving(null)}
-      />
-
-      <UndoToast
-        message={
-          pending
-            ? `${pending.entry.kind === "Income" ? "Inkomsten" : "Utgiften"} ${pending.entry.name} borttagen`
-            : null
-        }
-        onUndo={undo}
-      />
+      <EntryDialogs editor={editor} />
     </Page>
   );
 }

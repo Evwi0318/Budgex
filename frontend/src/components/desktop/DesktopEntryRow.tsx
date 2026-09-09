@@ -1,13 +1,11 @@
 import { memo } from "react";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { categoryOf } from "../../lib/categories";
+import { entryNote, isTickedOff, sameRow } from "../../lib/entry";
 import { formatKr } from "../../lib/format";
-import type { PlannedEntry } from "../../hooks/useMonthPlanQuery";
+import type { EntryRowShape } from "../../lib/entry";
 
-interface DesktopEntryRowProps {
-  entry: PlannedEntry;
-  monthName: string;
-  locked: boolean;
+interface DesktopEntryRowProps extends EntryRowShape {
   onOpen: () => void;
   onTogglePaid?: () => void;
 }
@@ -21,13 +19,7 @@ function Row({
 }: DesktopEntryRowProps) {
   const category = categoryOf(entry.kind, entry.category);
   const isExpense = entry.kind === "Expense";
-  const paid = isExpense && !entry.isAutogiro && entry.isPaid;
-
-  const note = entry.isAutogiro
-    ? "Autogiro · Varje månad"
-    : entry.repeats
-      ? "Varje månad"
-      : `Bara ${monthName}`;
+  const paid = isTickedOff(entry);
 
   return (
     <div className="mb-1.5 flex items-center gap-2.5 rounded-[14px] bg-[var(--color-surface)] px-3 py-2.5 transition-colors hover:bg-[var(--color-surface-2)]">
@@ -78,7 +70,7 @@ function Row({
             {entry.name}
           </span>
           <span className="mt-px block text-[11.5px] text-[var(--color-text-faint)]">
-            {note}
+            {entryNote(entry, monthName)}
           </span>
         </span>
 
@@ -98,10 +90,4 @@ function Row({
   );
 }
 
-export const DesktopEntryRow = memo(
-  Row,
-  (before, after) =>
-    before.entry === after.entry &&
-    before.monthName === after.monthName &&
-    before.locked === after.locked
-);
+export const DesktopEntryRow = memo(Row, sameRow);

@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { formatKr, formatNumber } from "../../lib/format";
-import { goalProgress } from "../../lib/savings";
+import { goalProgress, overAllocationText } from "../../lib/savings";
 import type { SavingsAccount, SourceUsage } from "../../hooks/useSavingsQuery";
 
 interface SavingsRowProps {
@@ -84,7 +84,6 @@ function Row({
               ? `Ångra överföringen till ${account.name}`
               : `Markera ${formatKr(account.amount)} till ${account.name} som överfört`
           }
-          // Samma ruta som på en utgift, så att det syns att det är samma sak
           className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[9px] border-2 text-[14px] font-black transition not-disabled:active:scale-90 disabled:opacity-40 ${
             account.isTransferred
               ? "border-[var(--color-mint)] bg-[var(--color-mint)] text-[var(--color-on-mint)]"
@@ -147,9 +146,7 @@ function overText(account: SavingsAccount, sources: SourceUsage[]): string {
       account.rules.some((rule) => rule.sourceEntryId === candidate.sourceEntryId)
   );
 
-  if (!source) return "";
-
-  return source.available === 0
-    ? `${source.name} gav 0 kr den här månaden`
-    : `Du fördelar ${formatKr(source.allocated)} från ${source.name} som ger ${formatKr(source.available)}`;
+  return source
+    ? overAllocationText(source.name, source.allocated, source.available)
+    : "";
 }

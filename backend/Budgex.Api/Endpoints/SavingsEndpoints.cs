@@ -5,13 +5,12 @@ using Budgex.Domain.Common;
 using Budgex.Domain.Entities;
 using Budgex.Domain.Savings;
 using System.Security.Claims;
+using static Budgex.Api.Endpoints.EndpointHelpers;
 
 namespace Budgex.Api.Endpoints;
 
 public static class SavingsEndpoints
 {
-    private const decimal MaxAmount = 10_000_000m;
-
     public static void MapSavingsEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/months/{year:int}/{month:int}/savings")
@@ -208,21 +207,6 @@ public static class SavingsEndpoints
     private static bool Percentage(AllocationRuleRequest rule) =>
         Enum.TryParse<RuleType>(rule.RuleType, ignoreCase: true, out var type)
         && type == RuleType.Percentage;
-
-    private static bool TryMonth(int year, int month, out MonthKey key)
-    {
-        if (year is < 2000 or > 2100 || month is < 1 or > 12)
-        {
-            key = default;
-            return false;
-        }
-
-        key = new MonthKey(year, month);
-        return true;
-    }
-
-    private static IResult BadRequest(string message) =>
-        Results.BadRequest(new { message });
 }
 
 public sealed record AllocationRuleRequest(Guid SourceEntryId, string RuleType, decimal Value);

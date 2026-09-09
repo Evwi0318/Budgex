@@ -128,7 +128,6 @@ export function SwipeTabs({
     // Räkna från startX istället för från Reacts 'index' prop
     let nextX = from.startX + dx / span;
 
-    // Motstånd om vi försöker svepa förbi första eller sista fliken
     if (nextX > 0) {
       nextX = nextX * 0.25;
     } else if (nextX < -(count - 1)) {
@@ -160,7 +159,6 @@ export function SwipeTabs({
       next = dx < 0 ? current + 1 : current - 1;
     }
 
-    // Se till att vi inte landar utanför arrayen
     next = Math.max(0, Math.min(count - 1, next));
 
     if (next !== index) {

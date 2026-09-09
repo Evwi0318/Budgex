@@ -3,14 +3,7 @@ import { ApiError } from "../lib/apiError";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-/**
- * Fetch med access token påsatt, och automatisk förnyelse vid 401.
- *
- * Analogi: access token är armbandet du visar i entrén. Det gäller bara
- * 15 minuter. Refresh token är kvittot i fickan — när armbandet gått ut
- * går appen tillbaka till luckan, visar kvittot och får ett nytt armband,
- * utan att du behöver logga in igen.
- */
+/** Fetch med access token påsatt, och automatisk förnyelse vid 401 */
 export function useApi() {
   const { accessToken, userEmail, setAuth, logout } = useAuth();
 

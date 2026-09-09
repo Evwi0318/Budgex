@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button } from "../ui/Button";
-import { NumberField } from "../ui/NumberField";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
-import { Segmented } from "../ui/Segmented";
-import { Label } from "./AddEntryForm";
-import { categoriesFor } from "../../lib/categories";
+import { EntryFields, SaveError } from "./EntryFields";
 import { formatKr, getMonthName } from "../../lib/format";
 import { useUpdateEntryMutation } from "../../hooks/useEntryMutation";
-import { saveError } from "../../lib/apiError";
+import type { EntryDraft } from "./EntryFields";
 import type { EntryScope } from "../../hooks/useEntryMutation";
 import type { PlannedEntry } from "../../hooks/useMonthPlanQuery";
 
@@ -20,6 +17,14 @@ interface EditEntryFormProps {
   onDirtyChange: (dirty: boolean) => void;
 }
 
+const FIELDS = [
+  "name",
+  "amount",
+  "category",
+  "isAutogiro",
+  "repeats",
+] as const satisfies readonly (keyof EntryDraft)[];
+
 export function EditEntryForm({
   year,
   month,
@@ -28,26 +33,21 @@ export function EditEntryForm({
   onRemove,
   onDirtyChange,
 }: EditEntryFormProps) {
-  const categories = categoriesFor(entry.kind);
   const monthName = getMonthName(month);
   const noun = entry.kind === "Income" ? "Inkomsten" : "Utgiften";
 
-  const [name, setName] = useState(entry.name);
-  const [amount, setAmount] = useState(entry.amount);
-  const [category, setCategory] = useState(entry.category);
-  const [isAutogiro, setIsAutogiro] = useState(entry.isAutogiro);
-  const [repeats, setRepeats] = useState(entry.repeats);
+  const [draft, setDraft] = useState<EntryDraft>(() => ({
+    name: entry.name,
+    amount: entry.amount,
+    category: entry.category,
+    isAutogiro: entry.isAutogiro,
+    repeats: entry.repeats,
+  }));
   const [askingScope, setAskingScope] = useState(false);
 
   const updateEntry = useUpdateEntryMutation(year, month);
-  const canSave = name.trim().length > 0 && amount > 0;
-
-  const dirty =
-    name !== entry.name ||
-    amount !== entry.amount ||
-    category !== entry.category ||
-    isAutogiro !== entry.isAutogiro ||
-    repeats !== entry.repeats;
+  const canSave = draft.name.trim().length > 0 && draft.amount > 0;
+  const dirty = FIELDS.some((field) => draft[field] !== entry[field]);
 
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
@@ -56,11 +56,8 @@ export function EditEntryForm({
       {
         id: entry.id,
         kind: entry.kind,
-        name: name.trim(),
-        category,
-        amount,
-        isAutogiro,
-        repeats,
+        ...draft,
+        name: draft.name.trim(),
         scope,
       },
       { onSuccess: onSaved }
@@ -72,7 +69,7 @@ export function EditEntryForm({
 
     // Frågan om omfattning gäller bara ett belopp som ändras och fortsätter
     // gälla kommande månader. Slår man av "Varje månad" tar valet av Gäller över.
-    if (entry.repeats && repeats && amount !== entry.amount) {
+    if (entry.repeats && draft.repeats && draft.amount !== entry.amount) {
       setAskingScope(true);
       return;
     }
@@ -87,66 +84,14 @@ export function EditEntryForm({
           {entry.kind === "Income" ? "Ändra inkomst" : "Ändra utgift"}
         </h2>
 
-        <label className="block">
-          <Label>Namn</Label>
-          <input
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            maxLength={40}
-            className="h-12 w-full rounded-2xl bg-[var(--color-surface-2)] px-4 text-base font-bold outline-none focus:border focus:border-[var(--color-mint-dim)]"
-          />
-        </label>
+        <EntryFields
+          kind={entry.kind}
+          month={month}
+          draft={draft}
+          onChange={setDraft}
+        />
 
-        <NumberField label="Belopp" value={amount} onChange={setAmount} />
-
-        <div>
-          <Label>Kategori</Label>
-          <div className="grid grid-cols-4 gap-2">
-            {categories.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setCategory(option.value)}
-                aria-pressed={option.value === category}
-                className={`flex flex-col items-center gap-1 rounded-[14px] py-2.5 text-[10px] font-bold transition ${
-                  option.value === category
-                    ? "bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
-                    : "bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
-                }`}
-              >
-                <option.icon size={19} strokeWidth={2} />
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <Label>Gäller</Label>
-          <Segmented
-            options={[`Bara ${monthName}`, "Varje månad"]}
-            selected={repeats ? 1 : 0}
-            onSelect={(index) => setRepeats(index === 1)}
-          />
-        </div>
-
-        {entry.kind === "Expense" && (
-          <div>
-            <Label>Betalning</Label>
-            <Segmented
-              options={["Betalar själv", "Autogiro"]}
-              selected={isAutogiro ? 1 : 0}
-              onSelect={(index) => setIsAutogiro(index === 1)}
-            />
-          </div>
-        )}
-
-        {updateEntry.isError && (
-          <p className="text-sm text-[var(--color-danger)]">
-            {saveError(updateEntry.error)}
-          </p>
-        )}
+        {updateEntry.isError && <SaveError error={updateEntry.error} />}
 
         <Button
           type="submit"
@@ -171,7 +116,7 @@ export function EditEntryForm({
       <ConfirmDialog
         open={askingScope}
         title={`Ändra ${noun.toLowerCase()} ${entry.name}`}
-        body={`${formatKr(entry.amount)} → ${formatKr(amount)}. ${noun} återkommer varje månad.`}
+        body={`${formatKr(entry.amount)} → ${formatKr(draft.amount)}. ${noun} återkommer varje månad.`}
         actions={[
           { label: `Bara ${monthName} ${year}` },
           { label: "Den här och kommande månader", tone: "alt" },

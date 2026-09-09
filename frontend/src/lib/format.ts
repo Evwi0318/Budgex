@@ -1,6 +1,3 @@
-// All formatering av pengar och datum bor här — inget komponentlager
-// formaterar själv, så siffrorna ser likadana ut i hela appen.
-
 const kr = new Intl.NumberFormat("sv-SE", {
   style: "decimal",
   maximumFractionDigits: 0,
@@ -8,7 +5,6 @@ const kr = new Intl.NumberFormat("sv-SE", {
 
 export const formatKr = (value: number): string => `${kr.format(value)} kr`;
 
-/** Bara talet, för ytor där "kr" sätts i egen mindre stil */
 export const formatNumber = (value: number): string => kr.format(value);
 
 const tenths = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 });
@@ -44,7 +40,6 @@ const monthNames = [
 /** month är 1-baserad (1 = januari), som i API:t */
 export const getMonthName = (month: number): string => monthNames[month - 1];
 
-/** "Augusti 2026" — versal begynnelsebokstav enligt design-specen */
 export const formatMonthYear = (month: number, year: number): string => {
   const name = getMonthName(month);
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${year}`;

@@ -2,7 +2,8 @@ import { Check } from "lucide-react";
 import { Segmented } from "../ui/Segmented";
 import { categoryOf } from "../../lib/categories";
 import { formatKr } from "../../lib/format";
-import { draftAmount } from "../../lib/savings";
+import { MAX_AMOUNT, parseAmount } from "../../lib/amount";
+import { draftAmount, overAllocationText } from "../../lib/savings";
 import type { Draft } from "../../lib/savings";
 import type { PlannedEntry } from "../../hooks/useMonthPlanQuery";
 import type { RuleType } from "../../hooks/useSavingsQuery";
@@ -117,7 +118,10 @@ export function SourcePicker({
                       onChange={(event) =>
                         set(income.id, {
                           ...draft,
-                          value: clamp(event.target.value, draft.ruleType),
+                          value: parseAmount(
+                            event.target.value,
+                            draft.ruleType === "Percentage" ? 100 : MAX_AMOUNT
+                          ),
                         })
                       }
                       className="min-w-0 flex-1 bg-transparent text-[15px] font-extrabold tabular-nums outline-none placeholder:font-normal placeholder:text-[var(--color-text-faint)]"
@@ -165,18 +169,8 @@ function convert(draft: Draft, type: RuleType, available: number): Draft {
     : { ruleType: "Percentage", value: Math.min(100, Math.round((amount / (available || 1)) * 100)) };
 }
 
-function clamp(raw: string, type: RuleType): number {
-  const digits = Number(raw.replace(/\D/g, "")) || 0;
-
-  return Math.min(digits, type === "Percentage" ? 100 : 10_000_000);
-}
-
 function warn(allocated: number, available: number, name: string): string | null {
-  if (allocated > available) {
-    return available === 0
-      ? `${name} gav 0 kr den här månaden`
-      : `Du fördelar ${formatKr(allocated)} från ${name} som ger ${formatKr(available)}`;
-  }
+  if (allocated > available) return overAllocationText(name, allocated, available);
 
   return allocated === available && allocated > 0 ? `Hela ${name} är fördelad` : null;
 }

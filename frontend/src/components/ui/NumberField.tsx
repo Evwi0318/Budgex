@@ -4,7 +4,6 @@ interface NumberFieldProps {
   label: string;
   value: number;
   onChange: (value: number) => void;
-  /** Förklarande rad under fältet, t.ex. var siffran ska hämtas ifrån */
   hint?: string;
 }
 

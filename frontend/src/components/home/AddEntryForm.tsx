@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "../ui/Button";
-import { NumberField } from "../ui/NumberField";
-import { Segmented } from "../ui/Segmented";
+import { EntryFields, SaveError } from "./EntryFields";
 import { categoriesFor } from "../../lib/categories";
-import { getMonthName } from "../../lib/format";
 import { useAddEntryMutation } from "../../hooks/useEntryMutation";
-import { saveError } from "../../lib/apiError";
+import type { EntryDraft } from "./EntryFields";
 import type { EntryKind } from "../../lib/categories";
 
 interface AddEntryFormProps {
@@ -23,17 +21,17 @@ export function AddEntryForm({
   onSaved,
   onDirtyChange,
 }: AddEntryFormProps) {
-  const categories = categoriesFor(kind);
-
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState(0);
-  const [category, setCategory] = useState(categories[0].value);
-  const [repeats, setRepeats] = useState(kind === "Income");
-  const [isAutogiro, setIsAutogiro] = useState(false);
+  const [draft, setDraft] = useState<EntryDraft>(() => ({
+    name: "",
+    amount: 0,
+    category: categoriesFor(kind)[0].value,
+    isAutogiro: false,
+    repeats: kind === "Income",
+  }));
 
   const addEntry = useAddEntryMutation(year, month);
-  const canSave = name.trim().length > 0 && amount > 0;
-  const dirty = name.trim().length > 0 || amount > 0;
+  const canSave = draft.name.trim().length > 0 && draft.amount > 0;
+  const dirty = draft.name.trim().length > 0 || draft.amount > 0;
 
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
@@ -42,7 +40,7 @@ export function AddEntryForm({
     if (!canSave) return;
 
     addEntry.mutate(
-      { kind, name: name.trim(), category, amount, isAutogiro, repeats },
+      { kind, ...draft, name: draft.name.trim() },
       { onSuccess: onSaved }
     );
   };
@@ -53,67 +51,15 @@ export function AddEntryForm({
         {kind === "Income" ? "Ny inkomst" : "Ny utgift"}
       </h2>
 
-      <label className="block">
-        <Label>Namn</Label>
-        <input
-          type="text"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          maxLength={40}
-          placeholder={kind === "Income" ? "T.ex. Lön" : "T.ex. Hyra"}
-          className="h-12 w-full rounded-2xl bg-[var(--color-surface-2)] px-4 text-base font-bold outline-none focus:border focus:border-[var(--color-mint-dim)] placeholder:font-normal placeholder:text-[var(--color-text-faint)]"
-        />
-      </label>
+      <EntryFields
+        kind={kind}
+        month={month}
+        draft={draft}
+        onChange={setDraft}
+        placeholder={kind === "Income" ? "T.ex. Lön" : "T.ex. Hyra"}
+      />
 
-      <NumberField label="Belopp" value={amount} onChange={setAmount} />
-
-      <div>
-        <Label>Kategori</Label>
-        <div className="grid grid-cols-4 gap-2">
-          {categories.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setCategory(option.value)}
-              aria-pressed={option.value === category}
-              className={`flex flex-col items-center gap-1 rounded-[14px] py-2.5 text-[10px] font-bold transition ${
-                option.value === category
-                  ? "bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
-                  : "bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
-              }`}
-            >
-              <option.icon size={19} strokeWidth={2} />
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <Label>Gäller</Label>
-        <Segmented
-          options={[`Bara ${getMonthName(month)}`, "Varje månad"]}
-          selected={repeats ? 1 : 0}
-          onSelect={(index) => setRepeats(index === 1)}
-        />
-      </div>
-
-      {kind === "Expense" && (
-        <div>
-          <Label>Betalning</Label>
-          <Segmented
-            options={["Betalar själv", "Autogiro"]}
-            selected={isAutogiro ? 1 : 0}
-            onSelect={(index) => setIsAutogiro(index === 1)}
-          />
-        </div>
-      )}
-
-      {addEntry.isError && (
-        <p className="text-sm text-[var(--color-danger)]">
-          {saveError(addEntry.error)}
-        </p>
-      )}
+      {addEntry.isError && <SaveError error={addEntry.error} />}
 
       <Button
         type="submit"
@@ -126,9 +72,3 @@ export function AddEntryForm({
     </form>
   );
 }
-
-export const Label = ({ children }: { children: string }) => (
-  <span className="mb-1.5 block text-[12px] font-medium text-[var(--color-text-muted)]">
-    {children}
-  </span>
-);
