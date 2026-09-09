@@ -44,7 +44,6 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  // I body, av samma skäl som BottomSheet
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-6">
       <button

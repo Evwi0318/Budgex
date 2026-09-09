@@ -1,12 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 /**
- * Varje skrivning mot budgeten gör både månaden och summeringen gammal.
- * Regeln bor här i stället för i varje enskild mutation.
- *
- * Nycklarna matchas på prefix: ["month"] träffar ["month", year, month].
- */
-/**
  * Skrivningar som bara bockar av något syns direkt i gränssnittet, och
  * rullas tillbaka om servern säger nej. En bock som väntar på nätet innan
  * den rör sig får hela appen att kännas trög.
@@ -38,6 +32,10 @@ export function useOptimisticMutation<TData, TVariables>(
   });
 }
 
+/**
+ * Varje skrivning mot budgeten gör både månaden och summeringen gammal.
+ * Nycklarna matchas på prefix: ["month"] träffar ["month", year, month].
+ */
 export function useBudgetMutation<TVariables>(
   mutationFn: (variables: TVariables) => Promise<unknown>
 ) {

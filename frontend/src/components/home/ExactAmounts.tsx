@@ -4,7 +4,6 @@ import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { formatKr } from "../../lib/format";
 import type { MonthSummary } from "../../hooks/useMonthPlanQuery";
 
-/** Kort utgång, så att skärmen går att använda igen direkt */
 const EXIT = { duration: 0.14, ease: [0.32, 0.72, 0, 1] } as const;
 
 interface ExactAmountsProps {

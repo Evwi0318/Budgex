@@ -6,7 +6,6 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import type { MonthSummary } from "../../hooks/useMonthPlanQuery";
 import type { HomeTab } from "../../context/MonthContext";
 
-/** Så länge fingret måste ligga still innan de exakta talen visas */
 const HOLD_MS = 450;
 const HOLD_SLOP = 8;
 
@@ -15,9 +14,7 @@ interface HeroCardProps {
   tab: HomeTab;
   onSelect: (tab: HomeTab) => void;
   dimmed?: boolean;
-  /** Vid scroll krymper kortet till bara siffrorna */
   compact?: boolean;
-  /** Långtryck: stora tal visas avkortade, hela talet får ett eget fönster */
   onInspect?: () => void;
 }
 

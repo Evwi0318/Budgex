@@ -30,7 +30,6 @@ interface SegmentedProps {
   selected: number;
   onSelect: (index: number) => void;
   tone?: keyof typeof TONES;
-  /** Smal variant för par som kr/% bredvid ett fält */
   compact?: boolean;
 }
 
