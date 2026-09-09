@@ -4,7 +4,7 @@ import { useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { MonthContext } from "../../context/MonthContext";
 import { DesktopTopBar } from "../desktop/DesktopTopBar";
 import { useIsDesktop } from "../../hooks/useIsDesktop";
-import { currentMonth } from "../../lib/month";
+import { currentMonth, shiftMonth } from "../../lib/month";
 import type { HomeTab, MonthContextValue } from "../../context/MonthContext";
 
 /**
@@ -32,13 +32,8 @@ export function AppShell() {
     if (location.pathname === "/savings") navigate("/", { replace: true });
   }, [location.pathname, navigate]);
 
-  const step = (delta: number) => {
-    const shifted = month + delta;
-    setMonth({
-      year: year + Math.floor((shifted - 1) / 12),
-      month: ((((shifted - 1) % 12) + 12) % 12) + 1,
-    });
-  };
+  const step = (delta: number) =>
+    setMonth((current) => shiftMonth(current, delta));
 
   // Kortet krymper vid 24 px men växer inte tillbaka förrän vid 10. Utan
   // glappet kan komprimeringen göra sidan så kort att den skrollar tillbaka
@@ -62,8 +57,6 @@ export function AppShell() {
       goToNextMonth: () => step(1),
       goToMonth: setMonth,
     }),
-    // step härleds ur year och month, som båda finns med
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [year, month, tab]
   );
 
