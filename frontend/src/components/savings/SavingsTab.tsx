@@ -1,19 +1,10 @@
-import { useState } from "react";
 import { EmptyState } from "../home/EmptyState";
-import { SavingsRow } from "./SavingsRow";
-import { SavingsForm } from "./SavingsForm";
-import { BottomSheet } from "../ui/BottomSheet";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { SavingsList, SavingsSheet } from "./SavingsList";
 import { useMonth } from "../../hooks/useMonth";
 import { useSavingsQuery } from "../../hooks/useSavingsQuery";
-import {
-  useDeleteSavingsAccountMutation,
-  useTransferAllMutation,
-  useTransferMutation,
-} from "../../hooks/useSavingsMutation";
+import { useSavingsEditor } from "../../hooks/useSavingsEditor";
 import { formatNumber, getMonthName } from "../../lib/format";
 import type { MonthPlan } from "../../hooks/useMonthPlanQuery";
-import type { SavingsAccount } from "../../hooks/useSavingsQuery";
 
 interface SavingsTabProps {
   plan: MonthPlan;
@@ -38,31 +29,7 @@ export function SavingsTab({
   const { year, month } = useMonth();
 
   const { data: savings, isLoading } = useSavingsQuery(year, month);
-
-  const transfer = useTransferMutation(year, month);
-  const transferAll = useTransferAllMutation(year, month);
-  const deleteAccount = useDeleteSavingsAccountMutation(year, month);
-
-  const [editing, setEditing] = useState<SavingsAccount | null>(null);
-  const [dirty, setDirty] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
-  const [removing, setRemoving] = useState<SavingsAccount | null>(null);
-  const [showTransferred, setShowTransferred] = useState(false);
-
-  const closeSheet = () => {
-    setEditing(null);
-    onCloseAdding();
-    setDirty(false);
-    setDiscarding(false);
-  };
-
-  const requestClose = () => (dirty ? setDiscarding(true) : closeSheet());
-
-  const confirmRemove = () => {
-    if (!removing) return;
-
-    deleteAccount.mutate(removing.id, { onSuccess: () => setRemoving(null) });
-  };
+  const editor = useSavingsEditor(year, month, savings, adding, onCloseAdding);
 
   if (isLoading) {
     return (
@@ -81,17 +48,8 @@ export function SavingsTab({
   }
 
   const monthName = getMonthName(month);
-  const remaining = savings.accounts.filter((account) => !account.isTransferred);
-  const done = savings.accounts.filter((account) => account.isTransferred);
-  // Bockas den sista överföringen bort finns ingen överförd-lista kvar att
-  // visa, och vyn måste falla tillbaka i samma render — annars ser det ut
-  // som att kontot försvann
-  const showDone = showTransferred && done.length > 0;
-  const visible = showDone ? done : remaining;
-  const sheetOpen = adding || editing !== null;
-  const hasAccounts = savings.accounts.length > 0;
-  const allDone = remaining.length === 0;
-  const remainingTotal = remaining.reduce((sum, account) => sum + account.amount, 0);
+  const { remaining, done, showDone, visible, allDone, remainingTotal } = editor;
+  const hasAccounts = editor.accounts.length > 0;
 
   return (
     <div className="px-4 pt-5">
@@ -121,22 +79,23 @@ export function SavingsTab({
 
         {done.length > 0 && (
           <button
-            onClick={() => setShowTransferred(!showDone)}
+            onClick={editor.toggleShowTransferred}
             className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-full border px-[11px] text-[11.5px] font-bold transition active:scale-95 ${
               showDone
                 ? "border-[var(--color-mint-dim)] bg-[var(--color-mint-wash)] text-[var(--color-mint)]"
                 : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
             }`}
           >
-            {showDone ? `‹ ${remaining.length} kvar` : `✓ ${done.length} överförda`}
+            {showDone
+              ? `‹ ${remaining.length} kvar`
+              : `✓ ${done.length} överförda`}
           </button>
         )}
       </header>
 
-      {/* Under rubriken, på samma plats som PaymentRow har i utgiftsfliken */}
       {hasAccounts && (
         <button
-          onClick={() => transferAll.mutate(!allDone)}
+          onClick={() => editor.transferAll.mutate(!allDone)}
           disabled={isLocked}
           className={`mb-2 flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-[14px] border px-3.5 py-3 text-[14px] font-extrabold transition not-disabled:active:scale-[0.99] ${
             allDone
@@ -161,72 +120,33 @@ export function SavingsTab({
       {!hasAccounts ? (
         <EmptyState
           emoji="🐷"
-          title={isLocked ? `Inget sparande i ${monthName}` : "Inga sparkonton skapade"}
+          title={
+            isLocked ? `Inget sparande i ${monthName}` : "Inga sparkonton skapade"
+          }
           body={
             isLocked
               ? "Den här månaden är avslutad och innehåller inga sparkonton."
               : "Ett sparkonto tar en del av en inkomst varje månad. Välj källa och hur mycket — resten sköter sig."
           }
-          footnote={isLocked ? undefined : "Tryck på + för att skapa ett sparkonto."}
+          footnote={
+            isLocked ? undefined : "Tryck på + för att skapa ett sparkonto."
+          }
         />
       ) : (
-        visible.map((account) => (
-          <SavingsRow
-            key={account.id}
-            account={account}
-            sources={savings.sources}
-            locked={isLocked}
-            onOpen={() => setEditing(account)}
-            onToggleTransfer={() =>
-              transfer.mutate({
-                id: account.id,
-                isTransferred: !account.isTransferred,
-              })
-            }
-          />
-        ))
+        <SavingsList
+          editor={editor}
+          sources={savings.sources}
+          locked={isLocked}
+        />
       )}
 
-      <BottomSheet open={sheetOpen} onClose={requestClose}>
-        {sheetOpen && (
-          <SavingsForm
-            year={year}
-            month={month}
-            account={editing}
-            incomes={plan.income}
-            sources={savings.sources}
-            onSaved={closeSheet}
-            onCancel={requestClose}
-            onRemove={() => {
-              const account = editing;
-              closeSheet();
-              if (account) setRemoving(account);
-            }}
-            onDirtyChange={setDirty}
-          />
-        )}
-      </BottomSheet>
-
-      <ConfirmDialog
-        open={discarding}
-        title="Kasta ändringarna?"
-        body={`Ändringarna av ${editing?.name ?? "det nya sparkontot"} sparas inte.`}
-        actions={[
-          { label: "Kasta", tone: "danger" },
-          { label: "Fortsätt skriva", tone: "alt" },
-        ]}
-        onPick={(index) => (index === 0 ? closeSheet() : setDiscarding(false))}
-        onCancel={() => setDiscarding(false)}
-      />
-
-      <ConfirmDialog
-        open={removing !== null}
-        title={`Ta bort ${removing?.name ?? ""}?`}
-        body={`Sparkontot slutar gälla från ${monthName}. Månader före behåller sitt sparande.`}
-        actions={[{ label: "Ta bort", tone: "danger" }]}
-        cancelLabel="Avbryt"
-        onPick={confirmRemove}
-        onCancel={() => setRemoving(null)}
+      <SavingsSheet
+        editor={editor}
+        plan={plan}
+        sources={savings.sources}
+        year={year}
+        month={month}
+        monthName={monthName}
       />
     </div>
   );
