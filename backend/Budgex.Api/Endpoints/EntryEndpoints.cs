@@ -5,13 +5,12 @@ using Budgex.Domain.Budget;
 using Budgex.Domain.Common;
 using Budgex.Domain.Entities;
 using System.Security.Claims;
+using static Budgex.Api.Endpoints.EndpointHelpers;
 
 namespace Budgex.Api.Endpoints;
 
 public static class EntryEndpoints
 {
-    private const decimal MaxAmount = 10_000_000m;
-
     public static void MapEntryEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/months/{year:int}/{month:int}/entries")
@@ -157,15 +156,6 @@ public static class EntryEndpoints
         (await repo.GetStatesForEntryAsync(entryId))
             .FirstOrDefault(state => state.Month == month);
 
-    private static bool TryMonth(int year, int month, out MonthKey key)
-    {
-        key = default;
-        if (year is < 2000 or > 2100 || month is < 1 or > 12) return false;
-
-        key = new MonthKey(year, month);
-        return true;
-    }
-
     private static string? Parse(
         IEntryFields request, out EntryKind kind, out EntryCategory category)
     {
@@ -192,9 +182,6 @@ public static class EntryEndpoints
         : request.Amount < 0 ? "Beloppet kan inte vara negativt."
         : request.Amount > MaxAmount ? "Beloppet är för stort."
         : null;
-
-    private static IResult BadRequest(string message) =>
-        Results.BadRequest(new { message });
 }
 
 public enum EntryScopeOption { Month, Onwards }
