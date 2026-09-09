@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Label } from "../home/AddEntryForm";
+import { Label } from "../ui/Label";
 import { useChangePasswordMutation } from "../../hooks/useProfileQuery";
 
 const MIN_LENGTH = 8;

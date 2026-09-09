@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Label } from "../home/AddEntryForm";
+import { Label } from "../ui/Label";
 import { SourcePicker } from "./SourcePicker";
 import { categoryOf } from "../../lib/categories";
 import { formatNumber } from "../../lib/format";
