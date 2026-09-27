@@ -3,12 +3,14 @@ export const sheetField =
 
 interface SheetActionsProps {
   onCancel: () => void;
+  onSave?: () => void;
   saveLabel: string;
   disabled?: boolean;
 }
 
 export function SheetActions({
   onCancel,
+  onSave,
   saveLabel,
   disabled = false,
 }: SheetActionsProps) {
@@ -22,7 +24,8 @@ export function SheetActions({
         Avbryt
       </button>
       <button
-        type="submit"
+        type={onSave ? "button" : "submit"}
+        onClick={onSave}
         disabled={disabled}
         className="h-12 flex-1 rounded-xl bg-[var(--color-mint)] text-[15px] font-extrabold text-[var(--color-on-mint)] transition active:scale-[0.98] disabled:opacity-35"
       >

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { draftAmount, goalProgress } from "./savings";
+import { draftAmount, goalProgress, monthlyFromItems } from "./savings";
 
 // Intl skiljer tusental med hårt mellanslag; testet ska inte falla på tecknet
 const plain = (value: string) => value.replace(/[\u00a0\u202f]/g, " ");
@@ -65,5 +65,17 @@ describe("goalProgress", () => {
 
     expect(result.pct).toBe(90);
     expect(result.nextPct).toBe(10);
+  });
+});
+
+describe("monthlyFromItems", () => {
+  const item = (yearlyAmount: number) => ({ name: "Post", yearlyAmount, dueMonth: 4 });
+
+  it("delar årssumman på tolv", () => {
+    expect(monthlyFromItems([item(1800), item(600)])).toBe(200);
+  });
+
+  it("avrundar uppåt så att året täcks", () => {
+    expect(monthlyFromItems([item(1000)])).toBe(84);
   });
 });

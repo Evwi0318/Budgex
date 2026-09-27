@@ -14,6 +14,7 @@ public sealed class SavingsAccount
     public MonthKey? To { get; set; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public List<AllocationRule> Rules { get; init; } = [];
+    public List<SavingsItem> Items { get; set; } = [];
 
     public bool LiveIn(MonthKey month) =>
         From <= month && (To is null || month < To.Value);

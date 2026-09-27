@@ -21,13 +21,15 @@ function Row({
   const over = account.rules.some((rule) =>
     sources.some(
       (source) =>
-        source.sourceEntryId === rule.sourceEntryId && source.status === "Over"
-    )
+        source.sourceEntryId === rule.sourceEntryId && source.status === "Over",
+    ),
   );
 
   const note = over
     ? overText(account, sources)
-    : account.rules.map(ruleText).join(" · ") || "Ingen källa vald";
+    : account.items.length > 0
+      ? `${account.items.map((item) => item.name).join(", ")} · från ${account.rules[0]?.sourceName ?? "ingen källa"}`
+      : account.rules.map(ruleText).join(" · ") || "Ingen källa vald";
 
   const goal =
     !locked && account.goal
@@ -57,7 +59,9 @@ function Row({
             </span>
             <span
               className={`mt-px block truncate text-[11.5px] ${
-                over ? "text-[var(--color-unpaid)]" : "text-[var(--color-text-faint)]"
+                over
+                  ? "text-[var(--color-unpaid)]"
+                  : "text-[var(--color-text-faint)]"
               }`}
             >
               {note}
@@ -125,7 +129,7 @@ export const SavingsRow = memo(
   (before, after) =>
     before.account === after.account &&
     before.sources === after.sources &&
-    before.locked === after.locked
+    before.locked === after.locked,
 );
 
 function ruleText(rule: {
@@ -143,7 +147,9 @@ function overText(account: SavingsAccount, sources: SourceUsage[]): string {
   const source = sources.find(
     (candidate) =>
       candidate.status === "Over" &&
-      account.rules.some((rule) => rule.sourceEntryId === candidate.sourceEntryId)
+      account.rules.some(
+        (rule) => rule.sourceEntryId === candidate.sourceEntryId,
+      ),
   );
 
   return source

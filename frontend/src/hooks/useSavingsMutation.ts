@@ -1,6 +1,6 @@
 import { useApi } from "./useApi";
 import { useBudgetMutation, useOptimisticMutation } from "./useBudgetMutation";
-import type { RuleType, SavingsMonth } from "./useSavingsQuery";
+import type { RuleType, SavingsItem, SavingsMonth } from "./useSavingsQuery";
 
 export interface RuleInput {
   sourceEntryId: string;
@@ -14,6 +14,7 @@ export interface SavingsAccountInput {
   goal: number | null;
   saved: number | null;
   rules: RuleInput[];
+  items: SavingsItem[];
 }
 
 export function useAddSavingsAccountMutation(year: number, month: number) {

@@ -8,6 +8,8 @@ public sealed record AllocationRuleDto(
     decimal Amount
 );
 
+public sealed record SavingsItemDto(string Name, decimal YearlyAmount, int DueMonth);
+
 public sealed record SavingsAccountDto(
     Guid Id,
     string Name,
@@ -16,7 +18,8 @@ public sealed record SavingsAccountDto(
     decimal? Saved,
     decimal Amount,
     bool IsTransferred,
-    List<AllocationRuleDto> Rules
+    List<AllocationRuleDto> Rules,
+    List<SavingsItemDto> Items
 );
 
 public sealed record SourceUsageDto(

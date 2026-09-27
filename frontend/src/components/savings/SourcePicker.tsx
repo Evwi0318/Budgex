@@ -11,6 +11,7 @@ import type { RuleType } from "../../hooks/useSavingsQuery";
 interface SourcePickerProps {
   incomes: PlannedEntry[];
   drafts: Record<string, Draft>;
+  single: boolean;
   usedByOthers: (sourceEntryId: string) => number;
   onChange: (drafts: Record<string, Draft>) => void;
 }
@@ -18,6 +19,7 @@ interface SourcePickerProps {
 export function SourcePicker({
   incomes,
   drafts,
+  single,
   usedByOthers,
   onChange,
 }: SourcePickerProps) {
@@ -31,15 +33,16 @@ export function SourcePicker({
   }
 
   const toggle = (id: string) => {
-    const next = { ...drafts };
+    const next = single ? {} : { ...drafts };
 
-    if (next[id]) delete next[id];
+    if (drafts[id]) delete next[id];
     else next[id] = { ruleType: "Fixed", value: 0 };
 
     onChange(next);
   };
 
-  const set = (id: string, draft: Draft) => onChange({ ...drafts, [id]: draft });
+  const set = (id: string, draft: Draft) =>
+    onChange({ ...drafts, [id]: draft });
 
   return (
     <div className="space-y-2">
@@ -47,7 +50,11 @@ export function SourcePicker({
         const draft = drafts[income.id];
         const category = categoryOf("Income", income.category);
         const warning = draft
-          ? warn(usedByOthers(income.id) + draftAmount(draft, income.amount), income.amount, income.name)
+          ? warn(
+              usedByOthers(income.id) + draftAmount(draft, income.amount),
+              income.amount,
+              income.name,
+            )
           : null;
 
         return (
@@ -82,7 +89,9 @@ export function SourcePicker({
               </span>
               <span
                 className={`text-[12.5px] font-bold tabular-nums ${
-                  draft ? "text-[var(--color-mint)]" : "text-[var(--color-text-muted)]"
+                  draft
+                    ? "text-[var(--color-mint)]"
+                    : "text-[var(--color-text-muted)]"
                 }`}
               >
                 {formatKr(income.amount)}
@@ -91,55 +100,62 @@ export function SourcePicker({
 
             {draft && (
               <div className="border-t border-[var(--color-border)] px-3.5 py-3">
-                <div className="flex items-center gap-2">
-                  <Segmented
-                    options={["kr", "%"]}
-                    selected={draft.ruleType === "Fixed" ? 0 : 1}
-                    onSelect={(index) =>
-                      set(
-                        income.id,
-                        convert(
-                          draft,
-                          index === 0 ? "Fixed" : "Percentage",
-                          income.amount
-                        )
-                      )
-                    }
-                    tone="sunken"
-                    compact
-                  />
-
-                  <div className="flex h-10 flex-1 items-center gap-2 rounded-xl bg-[var(--color-bg)] px-3">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={draft.value === 0 ? "" : draft.value}
-                      placeholder="0"
-                      onChange={(event) =>
-                        set(income.id, {
-                          ...draft,
-                          value: parseAmount(
-                            event.target.value,
-                            draft.ruleType === "Percentage" ? 100 : MAX_AMOUNT
+                {!single && (
+                  <div className="flex items-center gap-2">
+                    <Segmented
+                      options={["kr", "%"]}
+                      selected={draft.ruleType === "Fixed" ? 0 : 1}
+                      onSelect={(index) =>
+                        set(
+                          income.id,
+                          convert(
+                            draft,
+                            index === 0 ? "Fixed" : "Percentage",
+                            income.amount,
                           ),
-                        })
+                        )
                       }
-                      className="min-w-0 flex-1 bg-transparent text-[15px] font-extrabold tabular-nums outline-none placeholder:font-normal placeholder:text-[var(--color-text-faint)]"
+                      tone="sunken"
+                      compact
                     />
-                    <span className="text-[13px] text-[var(--color-text-muted)]">
-                      {draft.ruleType === "Fixed" ? "kr" : "%"}
-                    </span>
-                  </div>
-                </div>
 
-                {draft.ruleType === "Percentage" && (
+                    <div className="flex h-10 flex-1 items-center gap-2 rounded-xl bg-[var(--color-bg)] px-3">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={draft.value === 0 ? "" : draft.value}
+                        placeholder="0"
+                        onChange={(event) =>
+                          set(income.id, {
+                            ...draft,
+                            value: parseAmount(
+                              event.target.value,
+                              draft.ruleType === "Percentage"
+                                ? 100
+                                : MAX_AMOUNT,
+                            ),
+                          })
+                        }
+                        className="min-w-0 flex-1 bg-transparent text-[15px] font-extrabold tabular-nums outline-none placeholder:font-normal placeholder:text-[var(--color-text-faint)]"
+                      />
+                      <span className="text-[13px] text-[var(--color-text-muted)]">
+                        {draft.ruleType === "Fixed" ? "kr" : "%"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {!single && draft.ruleType === "Percentage" && (
                   <input
                     type="range"
                     min={0}
                     max={100}
                     value={draft.value}
                     onChange={(event) =>
-                      set(income.id, { ...draft, value: Number(event.target.value) })
+                      set(income.id, {
+                        ...draft,
+                        value: Number(event.target.value),
+                      })
                     }
                     className="mt-3 w-full touch-none accent-[var(--color-mint)]"
                   />
@@ -148,7 +164,8 @@ export function SourcePicker({
                 {/* Två raders höjd är avsatt även när texten bara tar en: annars
                     växer arket medan man drar i reglaget, och fälten hoppar. */}
                 <p className="mt-2 min-h-[34px] text-[11.5px] leading-[17px] text-[var(--color-text-faint)]">
-                  {warning ?? `Ger ${formatKr(draftAmount(draft, income.amount))} i månaden.`}
+                  {warning ??
+                    `Ger ${formatKr(draftAmount(draft, income.amount))} i månaden.`}
                 </p>
               </div>
             )}
@@ -166,11 +183,21 @@ function convert(draft: Draft, type: RuleType, available: number): Draft {
 
   return type === "Fixed"
     ? { ruleType: "Fixed", value: amount }
-    : { ruleType: "Percentage", value: Math.min(100, Math.round((amount / (available || 1)) * 100)) };
+    : {
+        ruleType: "Percentage",
+        value: Math.min(100, Math.round((amount / (available || 1)) * 100)),
+      };
 }
 
-function warn(allocated: number, available: number, name: string): string | null {
-  if (allocated > available) return overAllocationText(name, allocated, available);
+function warn(
+  allocated: number,
+  available: number,
+  name: string,
+): string | null {
+  if (allocated > available)
+    return overAllocationText(name, allocated, available);
 
-  return allocated === available && allocated > 0 ? `Hela ${name} är fördelad` : null;
+  return allocated === available && allocated > 0
+    ? `Hela ${name} är fördelad`
+    : null;
 }

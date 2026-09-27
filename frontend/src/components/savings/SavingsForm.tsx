@@ -2,18 +2,23 @@ import { useEffect, useState } from "react";
 import { Label } from "../ui/Label";
 import { SheetActions, sheetField } from "../ui/SheetActions";
 import { SourcePicker } from "./SourcePicker";
+import { SavingsItems } from "./SavingsItems";
 import { categoryOf } from "../../lib/categories";
 import { formatNumber } from "../../lib/format";
 import { parseAmount } from "../../lib/amount";
 import { saveError } from "../../lib/apiError";
-import { draftAmount, goalProgress } from "../../lib/savings";
+import { draftAmount, goalProgress, monthlyFromItems } from "../../lib/savings";
 import {
   useAddSavingsAccountMutation,
   useUpdateSavingsAccountMutation,
 } from "../../hooks/useSavingsMutation";
 import type { Draft } from "../../lib/savings";
 import type { PlannedEntry } from "../../hooks/useMonthPlanQuery";
-import type { SavingsAccount, SourceUsage } from "../../hooks/useSavingsQuery";
+import type {
+  SavingsAccount,
+  SavingsItem,
+  SourceUsage,
+} from "../../hooks/useSavingsQuery";
 
 interface SavingsFormProps {
   year: number;
@@ -43,18 +48,22 @@ export function SavingsForm({
   const [goal, setGoal] = useState(account?.goal ?? 0);
   const [saved, setSaved] = useState(account?.saved ?? 0);
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() =>
-    initialDrafts(account)
+    initialDrafts(account),
   );
+  const [items, setItems] = useState<SavingsItem[]>(account?.items ?? []);
+
+  const rules =
+    items.length > 0 ? fromItems(drafts, monthlyFromItems(items)) : drafts;
 
   const addAccount = useAddSavingsAccountMutation(year, month);
   const updateAccount = useUpdateSavingsAccountMutation(year, month);
   const pending = addAccount.isPending || updateAccount.isPending;
   const failed = addAccount.isError || updateAccount.isError;
 
-  const chosen = incomes.filter((income) => drafts[income.id]);
+  const chosen = incomes.filter((income) => rules[income.id]);
   const total = chosen.reduce(
-    (sum, income) => sum + draftAmount(drafts[income.id], income.amount),
-    0
+    (sum, income) => sum + draftAmount(rules[income.id], income.amount),
+    0,
   );
 
   const dirty =
@@ -62,15 +71,20 @@ export function SavingsForm({
     icon !== (account?.icon ?? "🐷") ||
     goal !== (account?.goal ?? 0) ||
     saved !== (account?.saved ?? 0) ||
-    JSON.stringify(drafts) !== JSON.stringify(initialDrafts(account));
+    JSON.stringify(drafts) !== JSON.stringify(initialDrafts(account)) ||
+    JSON.stringify(items) !== JSON.stringify(account?.items ?? []);
 
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
   const canSave = name.trim().length > 0;
 
   const usedByOthers = (sourceEntryId: string) => {
-    const usage = sources.find((source) => source.sourceEntryId === sourceEntryId);
-    const mine = account?.rules.find((rule) => rule.sourceEntryId === sourceEntryId);
+    const usage = sources.find(
+      (source) => source.sourceEntryId === sourceEntryId,
+    );
+    const mine = account?.rules.find(
+      (rule) => rule.sourceEntryId === sourceEntryId,
+    );
 
     return (usage?.allocated ?? 0) - (mine?.amount ?? 0);
   };
@@ -84,15 +98,19 @@ export function SavingsForm({
       icon,
       goal: goal > 0 ? goal : null,
       saved: goal > 0 ? saved : null,
-      rules: Object.entries(drafts).map(([sourceEntryId, draft]) => ({
+      rules: Object.entries(rules).map(([sourceEntryId, draft]) => ({
         sourceEntryId,
         ruleType: draft.ruleType,
         value: draft.value,
       })),
+      items,
     };
 
     if (account) {
-      updateAccount.mutate({ id: account.id, ...input }, { onSuccess: onSaved });
+      updateAccount.mutate(
+        { id: account.id, ...input },
+        { onSuccess: onSaved },
+      );
       return;
     }
 
@@ -126,6 +144,8 @@ export function SavingsForm({
         </div>
       </div>
 
+      <SavingsItems items={items} onChange={setItems} />
+
       <div>
         <Label>Sparmål (valfritt)</Label>
         <div className="flex gap-2.5">
@@ -144,7 +164,8 @@ export function SavingsForm({
         <Label>Fördela från</Label>
         <SourcePicker
           incomes={incomes}
-          drafts={drafts}
+          drafts={rules}
+          single={items.length > 0}
           usedByOthers={usedByOthers}
           onChange={setDrafts}
         />
@@ -271,7 +292,18 @@ function initialDrafts(account: SavingsAccount | null): Record<string, Draft> {
     (account?.rules ?? []).map((rule) => [
       rule.sourceEntryId,
       { ruleType: rule.ruleType, value: rule.value },
-    ])
+    ]),
+  );
+}
+
+function fromItems(
+  drafts: Record<string, Draft>,
+  value: number,
+): Record<string, Draft> {
+  return Object.fromEntries(
+    Object.keys(drafts)
+      .slice(0, 1)
+      .map((id) => [id, { ruleType: "Fixed", value }]),
   );
 }
 

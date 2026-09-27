@@ -64,6 +64,9 @@ public sealed class GetSavingsMonth(IEntryRepository entries, ISavingsRepository
                     rule.RuleType.ToString(),
                     rule.Value,
                     SavingsPlan.AmountFor(rule, Amount(amounts, rule.SourceEntryId))))
+                .ToList(),
+            planned.Account.Items
+                .Select(item => new SavingsItemDto(item.Name, item.YearlyAmount, item.DueMonth))
                 .ToList());
 
     private static string Name(IReadOnlyDictionary<Guid, string> names, Guid id) =>
