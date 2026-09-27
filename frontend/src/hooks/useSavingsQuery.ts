@@ -12,6 +12,12 @@ export interface SavingsRule {
   amount: number;
 }
 
+export interface SavingsItem {
+  name: string;
+  yearlyAmount: number;
+  dueMonth: number;
+}
+
 export interface SavingsAccount {
   id: string;
   name: string;
@@ -21,6 +27,7 @@ export interface SavingsAccount {
   amount: number;
   isTransferred: boolean;
   rules: SavingsRule[];
+  items: SavingsItem[];
 }
 
 export interface SourceUsage {

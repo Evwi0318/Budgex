@@ -1,5 +1,5 @@
 import { formatKr, getMonthName } from "./format";
-import type { RuleType } from "../hooks/useSavingsQuery";
+import type { RuleType, SavingsItem } from "../hooks/useSavingsQuery";
 import { currentMonth, shiftMonth } from "./month";
 
 export interface Draft {
@@ -11,6 +11,9 @@ export const draftAmount = (draft: Draft, available: number): number =>
   draft.ruleType === "Fixed"
     ? draft.value
     : Math.round((available * draft.value) / 100);
+
+export const monthlyFromItems = (items: SavingsItem[]): number =>
+  Math.ceil(items.reduce((sum, item) => sum + item.yearlyAmount, 0) / 12);
 
 export interface GoalProgress {
   pct: number;

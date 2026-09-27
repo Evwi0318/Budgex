@@ -28,6 +28,7 @@ export interface Account {
   saved: number | null;
   isTransferred: boolean;
   rules: Rule[];
+  items?: { name: string; yearlyAmount: number; dueMonth: number }[];
 }
 
 export interface Seed {
@@ -116,6 +117,7 @@ const accountDto = (account: Account, income: Entry[]) => {
 
   return {
     ...account,
+    items: account.items ?? [],
     rules,
     amount: rules.reduce((sum, rule) => sum + rule.amount, 0),
   };
