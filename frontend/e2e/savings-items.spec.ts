@@ -24,14 +24,21 @@ test("räknar månadsbeloppet från posterna", async ({ page }) => {
   await sheet.getByRole("button", { name: "Lägg till", exact: true }).click();
 
   const row = page.getByRole("button", { name: /Öppna Årliga utgifter/ });
-  await expect(row).toContainText("Försäkring, Abonnemang · från Lön");
+  const card = row.locator("xpath=../..");
+  await expect(row).toContainText("från Lön");
   await expect(row).toContainText("200");
+
+  await page
+    .getByRole("button", { name: "Visa vad Årliga utgifter sparar till" })
+    .click();
+  await expect(card).toContainText(/Försäkring1\s800 kr · januari/);
+  await expect(card).toContainText(/Abonnemang600 kr · januari/);
 
   await row.click();
   const edit = dialog(page, "Redigera sparkonto");
   await edit.getByRole("button", { name: "Ta bort Abonnemang" }).click();
   await edit.getByRole("button", { name: "Spara", exact: true }).click();
 
-  await expect(row).toContainText("Försäkring · från Lön");
   await expect(row).toContainText("150");
+  await expect(card).not.toContainText("Abonnemang");
 });

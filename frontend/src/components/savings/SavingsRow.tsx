@@ -1,5 +1,6 @@
-import { memo } from "react";
-import { formatKr, formatNumber } from "../../lib/format";
+import { memo, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { formatKr, formatNumber, getMonthName } from "../../lib/format";
 import { goalProgress, overAllocationText } from "../../lib/savings";
 import type { SavingsAccount, SourceUsage } from "../../hooks/useSavingsQuery";
 
@@ -18,6 +19,8 @@ function Row({
   onOpen,
   onToggleTransfer,
 }: SavingsRowProps) {
+  const [expanded, setExpanded] = useState(false);
+
   const over = account.rules.some((rule) =>
     sources.some(
       (source) =>
@@ -28,7 +31,7 @@ function Row({
   const note = over
     ? overText(account, sources)
     : account.items.length > 0
-      ? `${account.items.map((item) => item.name).join(", ")} · från ${account.rules[0]?.sourceName ?? "ingen källa"}`
+      ? `från ${account.rules[0]?.sourceName ?? "ingen källa"}`
       : account.rules.map(ruleText).join(" · ") || "Ingen källa vald";
 
   const goal =
@@ -78,6 +81,20 @@ function Row({
           </span>
         </button>
 
+        {account.items.length > 0 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            aria-expanded={expanded}
+            aria-label={`Visa vad ${account.name} sparar till`}
+            className="grid h-8 w-8 shrink-0 place-items-center text-[var(--color-text-muted)]"
+          >
+            <ChevronDown
+              size={18}
+              className={`transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
+          </button>
+        )}
+
         <button
           onClick={onToggleTransfer}
           disabled={locked}
@@ -97,6 +114,24 @@ function Row({
           ✓
         </button>
       </div>
+
+      {expanded && (
+        <div className="mt-2.5 space-y-1.5">
+          {account.items.map((item, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between gap-3 rounded-xl bg-[var(--color-surface-2)] px-3 py-2"
+            >
+              <span className="truncate text-[13px] font-bold">
+                {item.name}
+              </span>
+              <span className="shrink-0 text-[11.5px] text-[var(--color-text-muted)]">
+                {formatKr(item.yearlyAmount)} · {getMonthName(item.dueMonth)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {goal && (
         <div className="mt-3">
