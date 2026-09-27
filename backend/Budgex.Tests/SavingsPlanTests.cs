@@ -158,4 +158,15 @@ public class SavingsPlanTests
         Assert.Equal(SourceStatus.Ok, usage.Status);
         Assert.Equal(20_000m, usage.Available);
     }
+
+    [Theory]
+    [InlineData(2_400, 200)]
+    [InlineData(1_000, 84)]
+    [InlineData(0, 0)]
+    public void MonthlyFromItems_RoundsUpSoTheYearIsCovered(decimal yearly, decimal monthly)
+    {
+        SavingsItem[] items = yearly == 0 ? [] : [new() { Name = "Försäkring", YearlyAmount = yearly, DueMonth = 4 }];
+
+        Assert.Equal(monthly, SavingsPlan.MonthlyFromItems(items));
+    }
 }

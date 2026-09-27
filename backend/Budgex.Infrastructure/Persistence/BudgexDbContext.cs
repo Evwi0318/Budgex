@@ -60,6 +60,7 @@ public sealed class BudgexDbContext(DbContextOptions<BudgexDbContext> options)
              .WithOne()
              .HasForeignKey(rule => rule.SavingsAccountId)
              .OnDelete(DeleteBehavior.Cascade);
+            e.OwnsMany(sa => sa.Items, items => items.ToJson());
         });
 
         // SourceEntryId har medvetet ingen främmande nyckel. Raderas inkomsten

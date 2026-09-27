@@ -1,5 +1,6 @@
 using Budgex.Domain.Common;
 using Budgex.Domain.Entities;
+using Budgex.Domain.Savings;
 
 namespace Budgex.Application.Demo;
 
@@ -44,7 +45,15 @@ public static class DemoData
         var trip = Account(userId, "Resa", "✈️", goal: 18_000m, saved: 4_800m, start);
         trip.Rules.Add(Rule(trip.Id, grant.Id, RuleType.Fixed, 900m));
 
-        var accounts = new List<SavingsAccount> { buffer, trip };
+        var yearly = Account(userId, "Årliga utgifter", "📅", goal: null, saved: 1_400m, start);
+        yearly.Items =
+        [
+            new SavingsItem { Name = "Hemförsäkring", YearlyAmount = 1_800m, DueMonth = 4 },
+            new SavingsItem { Name = "Amazon Prime", YearlyAmount = 690m, DueMonth = 11 },
+        ];
+        yearly.Rules.Add(Rule(yearly.Id, salary.Id, RuleType.Fixed, SavingsPlan.MonthlyFromItems(yearly.Items)));
+
+        var accounts = new List<SavingsAccount> { buffer, trip, yearly };
         var closedMonths = Enumerable.Range(0, MonthsOfHistory).Select(start.AddMonths).ToList();
 
         var entryStates = closedMonths
@@ -99,7 +108,7 @@ public static class DemoData
         };
 
     private static SavingsAccount Account(
-        Guid userId, string name, string icon, decimal goal, decimal saved, MonthKey from) =>
+        Guid userId, string name, string icon, decimal? goal, decimal? saved, MonthKey from) =>
         new()
         {
             UserId = userId,

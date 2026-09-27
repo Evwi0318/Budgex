@@ -20,6 +20,9 @@ public static class SavingsPlan
             ? rule.Value
             : Math.Round(sourceAmount * rule.Value / 100m, MidpointRounding.AwayFromZero);
 
+    public static decimal MonthlyFromItems(IEnumerable<SavingsItem> items) =>
+        Math.Ceiling(items.Sum(item => item.YearlyAmount) / 12m);
+
     public static decimal PlannedTotal(
         SavingsAccount account,
         IReadOnlyDictionary<Guid, decimal> sources) =>

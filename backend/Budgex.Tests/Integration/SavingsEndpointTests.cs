@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 
 namespace Budgex.Tests.Integration;
@@ -171,6 +172,48 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
         Assert.Equal(0m, rule.Amount);
     }
 
+    [Fact]
+    public async Task Items_DecideTheMonthlyAmount()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+
+        await client.PostAsJsonAsync(AugustSavings, new
+        {
+            name = "Årliga utgifter",
+            icon = "📅",
+            rules = new[] { Fixed(salary, 0m) },
+            items = new[]
+            {
+                new { name = "Försäkring", yearlyAmount = 1800m, dueMonth = 4 },
+                new { name = "Abonnemang", yearlyAmount = 600m, dueMonth = 10 },
+            },
+        });
+
+        var account = Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts);
+
+        Assert.Equal(200m, account.Amount);
+        Assert.Equal(2, account.Items.Count);
+    }
+
+    [Fact]
+    public async Task Items_RequireExactlyOneSource()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+        var grant = await IncomeAsync(client, "CSN", "Grant", 6000m);
+
+        var response = await client.PostAsJsonAsync(AugustSavings, new
+        {
+            name = "Årliga utgifter",
+            icon = "📅",
+            rules = new[] { Fixed(salary, 0m), Fixed(grant, 0m) },
+            items = new[] { new { name = "Försäkring", yearlyAmount = 1800m, dueMonth = 4 } },
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private static object Percent(Guid source, decimal value) =>
         new { sourceEntryId = source, ruleType = "Percentage", value };
 
@@ -234,7 +277,10 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
         decimal Value, decimal Amount);
 
     private sealed record AccountDto(Guid Id, string Name, string Icon, decimal? Goal,
-        decimal? Saved, decimal Amount, bool IsTransferred, List<RuleDto> Rules);
+        decimal? Saved, decimal Amount, bool IsTransferred, List<RuleDto> Rules,
+        List<ItemDto> Items);
+
+    private sealed record ItemDto(string Name, decimal YearlyAmount, int DueMonth);
 
     private sealed record SourceDto(Guid SourceEntryId, string Name, decimal Available,
         decimal Allocated, string Status);

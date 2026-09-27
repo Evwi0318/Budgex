@@ -1,4 +1,5 @@
 using Budgex.Api.Extensions;
+using Budgex.Application.DTOs;
 using Budgex.Application.Interfaces;
 using Budgex.Application.UseCases;
 using Budgex.Domain.Common;
@@ -43,6 +44,7 @@ public static class SavingsEndpoints
                 Goal = request.Goal,
                 Saved = request.Saved,
                 From = key,
+                Items = Items(request),
             };
 
             account.Rules.AddRange(Rules(request, account.Id));
@@ -69,6 +71,7 @@ public static class SavingsEndpoints
             account.Icon = request.Icon;
             account.Goal = request.Goal;
             account.Saved = request.Saved;
+            account.Items = Items(request);
 
             await repo.ReplaceRulesAsync(account, Rules(request, account.Id));
             await repo.SaveChangesAsync();
@@ -182,14 +185,28 @@ public static class SavingsEndpoints
         (await GetSavingsMonth.IncomeFor(entries, userId, month))
             .ToDictionary(item => item.Entry.Id, item => item.Amount);
 
-    private static IEnumerable<AllocationRule> Rules(SavingsAccountRequest request, Guid accountId) =>
-        request.Rules.Select(rule => new AllocationRule
+    private static IEnumerable<AllocationRule> Rules(SavingsAccountRequest request, Guid accountId)
+    {
+        var items = Items(request);
+
+        return request.Rules.Select(rule => new AllocationRule
         {
             SavingsAccountId = accountId,
             SourceEntryId = rule.SourceEntryId,
-            RuleType = Enum.Parse<RuleType>(rule.RuleType, ignoreCase: true),
-            Value = rule.Value,
+            RuleType = items.Count > 0 ? RuleType.Fixed : Enum.Parse<RuleType>(rule.RuleType, ignoreCase: true),
+            Value = items.Count > 0 ? SavingsPlan.MonthlyFromItems(items) : rule.Value,
         });
+    }
+
+    private static List<SavingsItem> Items(SavingsAccountRequest request) =>
+        (request.Items ?? [])
+            .Select(item => new SavingsItem
+            {
+                Name = item.Name.Trim(),
+                YearlyAmount = item.YearlyAmount,
+                DueMonth = item.DueMonth,
+            })
+            .ToList();
 
     private static string? Validate(SavingsAccountRequest r) =>
         string.IsNullOrWhiteSpace(r.Name) ? "Namnet får inte vara tomt."
@@ -202,6 +219,11 @@ public static class SavingsEndpoints
         : r.Rules.Any(rule => rule.Value < 0) ? "Regelvärdet kan inte vara negativt."
         : r.Rules.Any(rule => Percentage(rule) && rule.Value > 100) ? "Procenten kan inte överstiga 100."
         : r.Rules.Any(rule => !Percentage(rule) && rule.Value > MaxAmount) ? "Beloppet är för stort."
+        : Items(r) is not { Count: > 0 } items ? null
+        : r.Rules.Count != 1 ? "Ett konto med poster behöver exakt en källa."
+        : items.Any(item => item.Name.Length is 0 or > 40) ? "Postens namn är ogiltigt."
+        : items.Any(item => item.YearlyAmount is <= 0 or > MaxAmount) ? "Postens belopp är ogiltigt."
+        : items.Any(item => item.DueMonth is < 1 or > 12) ? "Postens månad är ogiltig."
         : null;
 
     private static bool Percentage(AllocationRuleRequest rule) =>
@@ -216,7 +238,8 @@ public sealed record SavingsAccountRequest(
     string Icon,
     decimal? Goal,
     decimal? Saved,
-    List<AllocationRuleRequest> Rules
+    List<AllocationRuleRequest> Rules,
+    List<SavingsItemDto>? Items
 );
 
 public sealed record TransferredRequest(bool IsTransferred);
