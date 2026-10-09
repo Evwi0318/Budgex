@@ -56,6 +56,8 @@ export function SwipeTabs({
   const willChange = useTransform(moving, (value) =>
     value ? "transform" : "auto"
   );
+  // Dolda flikar ligger absolut och skulle annars ge scroll åt en kort flik
+  const overflowY = useTransform(moving, (value) => (value ? "visible" : "clip"));
 
   const width = () => deckRef.current?.offsetWidth ?? 0;
 
@@ -190,7 +192,7 @@ export function SwipeTabs({
     >
       {header}
 
-      <div ref={deckRef} className="relative overflow-x-clip">
+      <motion.div ref={deckRef} style={{ overflowY }} className="relative overflow-x-clip">
         <motion.div style={{ x: deckX, willChange }} className="relative">
           {Array.from({ length: count }, (_, slot) => (
             <div
@@ -208,7 +210,7 @@ export function SwipeTabs({
             </div>
           ))}
         </motion.div>
-      </div>
+      </motion.div>
     </div>
   );
 }
