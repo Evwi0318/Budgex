@@ -30,18 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hasRestored.current) return;
     hasRestored.current = true;
 
-    fetch(`${API_URL}/api/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    })
-      .then(async (response) => {
-        if (!response.ok) return;
-        const { accessToken: token } = await response.json();
-        setAccessToken(token);
-      })
-      .catch(() => {
-        // Ingen giltig session, eller inget nät — appen visar inloggningen
-      })
+    restoreSession()
+      .then(setAccessToken)
       .finally(() => setIsRestoring(false));
   }, []);
 
@@ -72,4 +62,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+// Bara 401 betyder utloggad. Nätfel och kallstart får några nya försök.
+async function restoreSession(attempts = 3): Promise<string | null> {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const response = await fetch(`${API_URL}/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => null);
+
+    if (response?.ok) return (await response.json()).accessToken;
+    if (response?.status === 401) return null;
+
+    if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+  }
+
+  return null;
 }

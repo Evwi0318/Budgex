@@ -23,10 +23,11 @@ export function useApi() {
         credentials: "include",
       });
 
-      if (!refreshed.ok) {
+      if (refreshed.status === 401) {
         logout();
         throw new Error("Sessionen har gått ut. Logga in igen.");
       }
+      if (!refreshed.ok) throw new Error("Kunde inte nå servern. Försök igen.");
 
       const { accessToken: newToken } = await refreshed.json();
       setAuth(newToken, userEmail ?? "");
