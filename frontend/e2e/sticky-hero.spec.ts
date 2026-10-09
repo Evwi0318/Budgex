@@ -71,7 +71,7 @@ test("sista raden är nåbar även med ångra-fönstret framme", async ({ page }
   await expect(page.getByRole("button", { name: "Ta bort", exact: true })).toBeVisible();
 });
 
-test("en låst månad ser låst ut även komprimerad", async ({ page }) => {
+test("en låst månad ser låst ut men kortet förblir täckande", async ({ page }) => {
   await prevMonth(page).click();
   await expect(page.getByRole("button", { name: "🔒 Avslutad — lås upp" })).toBeVisible();
 
@@ -81,10 +81,12 @@ test("en låst månad ser låst ut även komprimerad", async ({ page }) => {
   expect(await fontSize(page)).toBeCloseTo(26, 0);
   await expect(page.getByRole("button", { name: "Lägg till utgift" })).toHaveCount(0);
 
-  const dimmed = await page
-    .locator(".hero-card")
-    .evaluate((el) => parseFloat(getComputedStyle(el).opacity));
-  expect(dimmed).toBeLessThan(1);
+  const [card, content] = await page.locator(".hero-card").evaluate((el) => [
+    getComputedStyle(el).opacity,
+    getComputedStyle(el.firstElementChild!).opacity,
+  ]);
+  expect(card).toBe("1");
+  expect(parseFloat(content)).toBeLessThan(1);
 });
 
 test("kortet pendlar inte när det komprimeras strax över tröskeln", async ({
