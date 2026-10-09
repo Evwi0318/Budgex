@@ -80,9 +80,9 @@ export function HeroCard({
         event.stopPropagation();
       }}
       style={{ WebkitTouchCallout: "none" }}
-      className={`hero-card sticky top-2 z-20 mx-4 rounded-[var(--radius-hero)] px-4 pb-1.5 transition-opacity ${
+      className={`hero-card sticky top-2 z-20 mx-4 rounded-[var(--radius-hero)] px-4 pb-1.5 ${
         compact ? "hero-card--compact pt-2.5" : "pt-5"
-      } ${dimmed ? "opacity-70" : ""}`}
+      } ${dimmed ? "*:opacity-70" : ""}`}
     >
       <div
         className={`hero-fade text-center text-[12px] font-medium text-[var(--color-text-muted)] ${
