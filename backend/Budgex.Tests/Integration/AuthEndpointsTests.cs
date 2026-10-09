@@ -180,23 +180,29 @@ public async Task Refresh_WithValidCookie_ReturnsNewAccessToken()
     }
 
     [Fact]
-    public async Task Refresh_TwiceWithTheSameCookie_KeepsTheSessionAlive()
+    public async Task Refresh_WithAnOldCookieWhoseReplacementWasNeverUsed_KeepsTheSessionAlive()
     {
         var client = _factory.CreateClientWithoutCookies();
         var cookie = await SignInAndGetRefreshCookie(client);
 
-        // Två flikar som laddas samtidigt skickar båda den gamla cookien
+        var lost = await PostRefresh(client, cookie);
+        var retry = await PostRefresh(client, cookie);
+
+        Assert.Equal(HttpStatusCode.OK, lost.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, retry.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await PostRefresh(client, RefreshCookie(retry))).StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_WhenTwoRequestsShareACookie_TheFirstNewCookieStillWorks()
+    {
+        var client = _factory.CreateClientWithoutCookies();
+        var cookie = await SignInAndGetRefreshCookie(client);
+
         var first = await PostRefresh(client, cookie);
-        var second = await PostRefresh(client, cookie);
+        await PostRefresh(client, cookie);
 
-        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
-
-        // Det viktiga: kedjan lever vidare i stället för att spärras
-        var rotated = RefreshCookie(first);
-        var afterRace = await PostRefresh(client, rotated);
-
-        Assert.Equal(HttpStatusCode.OK, afterRace.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await PostRefresh(client, RefreshCookie(first))).StatusCode);
     }
 
     [Fact]

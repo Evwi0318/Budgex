@@ -23,11 +23,6 @@ public static class AuthEndpoints
 
     public const string RateLimitPolicy = "auth";
 
-    // Två flikar som laddas samtidigt hinner skicka samma cookie innan den
-    // första rotationen slagit igenom. Inom det här fönstret räknas det som
-    // en kapplöpning, inte som ett stulet token.
-    private static readonly TimeSpan RotationGracePeriod = TimeSpan.FromSeconds(30);
-
     public static void MapAuthEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/auth").RequireRateLimiting(RateLimitPolicy);
@@ -198,39 +193,14 @@ public static class AuthEndpoints
                 return Results.Unauthorized();
             }
 
-            if (existingToken.RevokedAt is not null)
+            var replacement = existingToken.RevokedAt is null
+                ? null
+                : await db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Id == existingToken.ReplacedByTokenId);
+
+            // Ett spärrat token vars ersättare aldrig använts betyder att svaret
+            // med den nya cookien gick förlorat. Har ersättaren använts är det replay.
+            if (existingToken.RevokedAt is not null && (replacement is null || replacement.RevokedAt is not null))
             {
-                var replacement = existingToken.ReplacedByTokenId is null
-                    ? null
-                    : await db.RefreshTokens
-                        .FirstOrDefaultAsync(rt => rt.Id == existingToken.ReplacedByTokenId);
-
-                // Ersättaren måste fortfarande leva. Har även den roterats
-                // vidare är kedjan förbi det här token, och då är en ny
-                // användning av det något annat än en kapplöpning.
-                var isRace =
-                    DateTime.UtcNow - existingToken.RevokedAt.Value < RotationGracePeriod
-                    && replacement is not null
-                    && replacement.RevokedAt is null
-                    && replacement.ExpiresAt > DateTime.UtcNow;
-
-                if (isRace)
-                {
-                    var raceUser = await userRepository.GetByIdAsync(existingToken.UserId);
-                    if (raceUser is null)
-                    {
-                        return Results.Problem("Användarens domändata saknas.", statusCode: 500);
-                    }
-
-                    // Ingen ny cookie: den förfrågan som vann äger kedjan, och
-                    // vi kan ändå inte återskapa dess värde ur avtrycket
-                    return Results.Ok(new AuthResponse(
-                        tokenService.CreateAccessToken(raceUser),
-                        replacement!.ExpiresAt));
-                }
-
-                // Möjlig replay-attack: token har redan använts en gång tidigare.
-                // Återkalla alla aktiva tokens för denna användare som säkerhetsåtgärd.
                 var allUserTokens = await db.RefreshTokens
                     .Where(rt => rt.UserId == existingToken.UserId && rt.RevokedAt == null)
                     .ToListAsync();
@@ -260,8 +230,12 @@ public static class AuthEndpoints
             var newAccessToken = tokenService.CreateAccessToken(domainUser);
             var (newRefreshToken, newRawValue) = tokenService.CreateRefreshToken(domainUser.Id);
 
-            existingToken.RevokedAt = DateTime.UtcNow;
-            existingToken.ReplacedByTokenId = newRefreshToken.Id;
+            foreach (var retired in new[] { existingToken, replacement })
+            {
+                if (retired is null) continue;
+                retired.RevokedAt = DateTime.UtcNow;
+                retired.ReplacedByTokenId = newRefreshToken.Id;
+            }
 
             db.RefreshTokens.Add(newRefreshToken);
             await db.SaveChangesAsync();
