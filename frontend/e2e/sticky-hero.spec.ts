@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { manyExpenses, openApp, prevMonth } from "./app";
+import { manyExpenses, openApp, openIncome, prevMonth } from "./app";
 
 const heroAmount = (page: Page) => page.getByLabel(/kvar att spendera$/);
 
@@ -104,4 +104,17 @@ test("kortet pendlar inte när det komprimeras strax över tröskeln", async ({
 
   expect(await page.locator("main").evaluate((el) => el.scrollTop)).toBe(40);
   expect(await fontSize(page)).toBeCloseTo(26, 0);
+});
+
+test("en kort flik går inte att scrolla och komprimeras aldrig", async ({ page }) => {
+  await scrollTo(page, 300);
+  await page.waitForTimeout(400);
+  await openIncome(page);
+  await page.waitForTimeout(800);
+
+  await scrollTo(page, 300);
+  await page.waitForTimeout(400);
+
+  expect(await page.locator("main").evaluate((el) => el.scrollTop)).toBe(0);
+  expect(await fontSize(page)).toBeCloseTo(42, 0);
 });
