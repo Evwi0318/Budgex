@@ -77,3 +77,29 @@ test("månad och flik överlever ett besök i profilen", async ({ page }) => {
   await expect(page.getByRole("button", { name: "🔒 Lås upp" })).toBeVisible();
   expect(await page.getByRole("button", { name: /^Sparande/ }).textContent()).toBe(month);
 });
+
+test("bakåt efter inloggning leder inte till inloggningssidan", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/auth/refresh", (route) => route.fulfill({ status: 401 }));
+  await page.route("**/api/auth/login", (route) =>
+    route.fulfill({ json: { accessToken: "test-token" } })
+  );
+
+  await page.goto("/");
+  await page.getByLabel("E-post").fill("evan@budgex.se");
+  await page.getByLabel("Lösenord").fill("Test1234!");
+  await page.locator('button[type="submit"]').click();
+  await page.getByRole("button", { name: /^Utgifter/ }).waitFor();
+
+  await page.goBack();
+
+  await expect(page).not.toHaveURL(/\/login/);
+});
+
+test("inloggad som öppnar /login hamnar hemma", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/login");
+
+  await expect(page.getByRole("button", { name: /^Utgifter/ })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+});
