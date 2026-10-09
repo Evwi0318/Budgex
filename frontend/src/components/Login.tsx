@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -36,8 +36,7 @@ export function Login() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState<Pending>(null);
 
-  const navigate = useNavigate();
-  const { setAuth } = useAuth();
+  const { setAuth, isAuthenticated } = useAuth();
 
   // Byte av flik börjar om från tomt: annars ligger e-post, lösenord och ett
   // felmeddelande från inloggningen kvar i registreringsformuläret, och tvärtom.
@@ -72,7 +71,6 @@ export function Login() {
 
       const { accessToken, email: demoEmail } = await response.json();
       setAuth(accessToken, demoEmail);
-      navigate("/");
     } catch (err) {
       setError(
         err instanceof Error
@@ -105,7 +103,6 @@ export function Login() {
       }
 
       setAuth(accessToken, email);
-      navigate("/");
     } catch (err) {
       setError(
         err instanceof Error
@@ -115,6 +112,8 @@ export function Login() {
       setPending(null);
     }
   }
+
+  if (isAuthenticated) return <Navigate to="/" replace />;
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
