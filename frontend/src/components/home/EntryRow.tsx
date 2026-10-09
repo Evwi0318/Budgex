@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { SwipeRow } from "./SwipeRow";
+import { motion } from "motion/react";
 import { categoryOf } from "../../lib/categories";
 import { entryNote, isTickedOff, sameRow } from "../../lib/entry";
 import { formatKr } from "../../lib/format";
@@ -7,7 +7,6 @@ import type { EntryRowShape } from "../../lib/entry";
 
 interface EntryRowProps extends EntryRowShape {
   onOpen: () => void;
-  onDelete: () => void;
   onTogglePaid: () => void;
 }
 
@@ -16,7 +15,6 @@ function Row({
   monthName,
   locked,
   onOpen,
-  onDelete,
   onTogglePaid,
 }: EntryRowProps) {
   const category = categoryOf(entry.kind, entry.category);
@@ -24,7 +22,13 @@ function Row({
   const paid = isTickedOff(entry);
 
   return (
-    <SwipeRow onDelete={onDelete} disabled={locked}>
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+      transition={{ type: "spring", damping: 34, stiffness: 420 }}
+      className="mb-2 overflow-hidden rounded-[var(--radius-card)]"
+    >
       <div className="flex items-center gap-2.5 bg-[var(--color-surface)] px-3 py-2">
         {isExpense &&
           (entry.isAutogiro ? (
@@ -93,7 +97,7 @@ function Row({
           ›
         </button>
       </div>
-    </SwipeRow>
+    </motion.div>
   );
 }
 

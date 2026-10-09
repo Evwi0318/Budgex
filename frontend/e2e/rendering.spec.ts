@@ -5,10 +5,6 @@ import { openApp } from "./app";
 const willChange = (element: Locator) =>
   element.evaluate((el) => getComputedStyle(el).willChange);
 
-/** Den dragbara delen av en rad, inte innehållet i den */
-const draggable = (page: Page, name: string) =>
-  page.getByRole("button", { name: `Öppna ${name}` }).locator("xpath=../..");
-
 const deck = (page: Page) => page.locator("div.overflow-x-clip > div").first();
 
 /**
@@ -16,24 +12,6 @@ const deck = (page: Page) => page.locator("div.overflow-x-clip > div").first();
  * betalar man för lagret hela tiden — en lista med trettio rader blir trettio
  * lager. Det ska bara vara påslaget medan något faktiskt rör sig.
  */
-test("rader har eget lager bara medan de dras", async ({ page }) => {
-  await openApp(page);
-
-  const row = draggable(page, "Elräkning");
-  expect(await willChange(row)).toBe("auto");
-
-  const box = (await row.boundingBox())!;
-  const y = box.y + box.height / 2;
-
-  await page.mouse.move(box.x + box.width - 30, y);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width - 90, y, { steps: 5 });
-  expect(await willChange(row)).toBe("transform");
-
-  await page.mouse.up();
-  await expect.poll(() => willChange(row)).toBe("auto");
-});
-
 test("flikdäcket har eget lager bara medan det sveps", async ({ page }) => {
   await openApp(page);
 

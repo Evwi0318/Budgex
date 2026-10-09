@@ -45,7 +45,7 @@ function MobileHome() {
   const togglePaid = setPaid.mutate;
 
   const editor = useEntryEditor(year, month, plan);
-  const { summary, removed, pending, openEdit, requestRemove } = editor;
+  const { summary, removed, pending, openEdit } = editor;
 
   const [addingSavings, setAddingSavings] = useState(false);
   const [showPaid, setShowPaid] = useState(false);
@@ -181,7 +181,6 @@ function MobileHome() {
                 monthName={monthName}
                 locked={isLocked}
                 onOpen={() => !isLocked && openEdit(entry)}
-                onDelete={() => requestRemove(entry)}
                 onTogglePaid={() =>
                   togglePaid({ id: entry.id, isPaid: !entry.isPaid })
                 }
@@ -214,7 +213,6 @@ function MobileHome() {
     addingSavings,
     closeSavings,
     openEdit,
-    requestRemove,
     togglePaid,
   ]);
 

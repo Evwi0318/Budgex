@@ -57,9 +57,7 @@ test("en kort rörelse byter inte flik", async ({ page }) => {
   await expect(activeTab(page)).toContainText("Utgifter");
 });
 
-test("svep på en rad tar bort raden i stället för att byta flik", async ({
-  page,
-}) => {
+test("svep på en rad byter flik", async ({ page }) => {
   await openApp(page);
 
   const row = (await page
@@ -67,13 +65,9 @@ test("svep på en rad tar bort raden i stället för att byta flik", async ({
     .locator("xpath=..")
     .boundingBox())!;
 
-  // Dra hela vägen förbi raderingströskeln
-  await drag(page, { x: row.x + row.width - 40, y: row.y + row.height / 2 }, -240);
+  await drag(page, { x: row.x + row.width - 40, y: row.y + row.height / 2 }, -120);
 
-  // Fliken står kvar, och raden är borttagen med ångra-fönstret framme
-  await expect(activeTab(page)).toContainText("Utgifter");
-  await expect(page.getByRole("status")).toContainText("Utgiften Mat borttagen");
-  await expect(page.getByRole("button", { name: "Öppna Mat" })).toHaveCount(0);
+  await expect(activeTab(page)).toContainText("Sparande");
 });
 
 test("svep på månadsraden byter månad, inte flik", async ({ page }) => {

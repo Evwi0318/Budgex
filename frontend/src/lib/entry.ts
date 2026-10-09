@@ -18,8 +18,8 @@ export const isTickedOff = (entry: PlannedEntry): boolean =>
   entry.kind === "Expense" && !entry.isAutogiro && entry.isPaid;
 
 /**
- * Ett flikbyte ritar om alla tre panelerna, och varje rad är en egen gest med
- * eget lager — utan den här spärren blev bytet segare ju längre listan var.
+ * Ett flikbyte ritar om alla tre panelerna — utan den här spärren blev bytet
+ * segare ju längre listan var.
  * Återanropen jämförs inte: de läser bara posten och låset.
  */
 export const sameRow = <T extends EntryRowShape>(before: T, after: T) =>
