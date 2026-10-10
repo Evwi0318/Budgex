@@ -120,3 +120,22 @@ test("en kort flik går inte att scrolla och komprimeras aldrig", async ({ page 
   expect(await page.locator("main").evaluate((el) => el.scrollTop)).toBe(0);
   expect(await fontSize(page)).toBeCloseTo(42, 0);
 });
+
+test("kortet krymper mjukt, inte i ett ryck", async ({ page }) => {
+  const heights = await page.locator("main").evaluate(async (main) => {
+    const card = main.querySelector<HTMLElement>(".hero-card")!;
+    const seen: number[] = [card.offsetHeight];
+
+    main.scrollTop = 200;
+    const end = performance.now() + 500;
+    while (performance.now() < end) {
+      await new Promise(requestAnimationFrame);
+      seen.push(card.offsetHeight);
+    }
+    return seen;
+  });
+
+  const biggestStep = Math.max(...heights.slice(1).map((h, i) => heights[i] - h));
+  expect(heights[0] - heights.at(-1)!).toBeGreaterThan(60);
+  expect(biggestStep).toBeLessThan(20);
+});
