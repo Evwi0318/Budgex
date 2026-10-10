@@ -89,23 +89,17 @@ test("en låst månad ser låst ut men kortet förblir täckande", async ({ page
   expect(parseFloat(content)).toBeLessThan(1);
 });
 
-test("kortet pendlar inte när det komprimeras strax över tröskeln", async ({
-  page,
-}) => {
-  // Komprimeringen gör innehållet kortare. Kompenserar webbläsaren genom att
-  // dra tillbaka scrollTop hamnar läget under tröskeln igen, och kortet
-  // växlar fram och tillbaka i all oändlighet.
+test("kortet står stilla halvvägs komprimerat", async ({ page }) => {
   await scrollTo(page, 40);
-  await page.waitForTimeout(1200);
-
-  const settled = await page.locator("main").evaluate((el) => el.scrollTop);
-  expect(settled).toBe(40);
-  expect(await fontSize(page)).toBeCloseTo(26, 0);
+  await page.waitForTimeout(600);
+  const size = await fontSize(page);
 
   await page.waitForTimeout(600);
 
   expect(await page.locator("main").evaluate((el) => el.scrollTop)).toBe(40);
-  expect(await fontSize(page)).toBeCloseTo(26, 0);
+  expect(await fontSize(page)).toBe(size);
+  expect(size).toBeGreaterThan(26);
+  expect(size).toBeLessThan(42);
 });
 
 test("en kort flik går inte att scrolla och komprimeras aldrig", async ({ page }) => {
@@ -121,21 +115,26 @@ test("en kort flik går inte att scrolla och komprimeras aldrig", async ({ page 
   expect(await fontSize(page)).toBeCloseTo(42, 0);
 });
 
-test("kortet krymper mjukt, inte i ett ryck", async ({ page }) => {
-  const heights = await page.locator("main").evaluate(async (main) => {
-    const card = main.querySelector<HTMLElement>(".hero-card")!;
-    const seen: number[] = [card.offsetHeight];
+test("kortet följer scrollen steg för steg", async ({ page }) => {
+  const sizes = await page.locator("main").evaluate(async (main) => {
+    const amount = main.querySelector(".hero-amount")!;
+    const read = () => parseFloat(getComputedStyle(amount).fontSize);
+    const seen = [read()];
 
-    main.scrollTop = 200;
-    const end = performance.now() + 500;
-    while (performance.now() < end) {
-      await new Promise(requestAnimationFrame);
-      seen.push(card.offsetHeight);
+    for (let top = 10; top <= 90; top += 10) {
+      const scrolled = new Promise((resolve) =>
+        main.addEventListener("scroll", resolve, { once: true })
+      );
+      main.scrollTop = top;
+      await scrolled;
+      seen.push(read());
     }
     return seen;
   });
 
-  const biggestStep = Math.max(...heights.slice(1).map((h, i) => heights[i] - h));
-  expect(heights[0] - heights.at(-1)!).toBeGreaterThan(60);
-  expect(biggestStep).toBeLessThan(20);
+  const steps = sizes.slice(1).map((size, i) => sizes[i] - size);
+  expect(sizes[0]).toBeCloseTo(42, 0);
+  expect(sizes.at(-1)).toBeCloseTo(26, 0);
+  expect(Math.min(...steps)).toBeGreaterThan(0);
+  expect(Math.max(...steps)).toBeLessThan(3);
 });

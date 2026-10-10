@@ -14,7 +14,6 @@ interface HeroCardProps {
   tab: HomeTab;
   onSelect: (tab: HomeTab) => void;
   dimmed?: boolean;
-  compact?: boolean;
   onInspect?: () => void;
 }
 
@@ -23,7 +22,6 @@ export function HeroCard({
   tab,
   onSelect,
   dimmed = false,
-  compact = false,
   onInspect,
 }: HeroCardProps) {
   const heading = summary.safeToSpend < 0 ? "Över budget" : "Kvar att spendera";
@@ -80,24 +78,16 @@ export function HeroCard({
         event.stopPropagation();
       }}
       style={{ WebkitTouchCallout: "none" }}
-      className={`hero-card hero-ease sticky top-2 z-20 mx-4 rounded-[var(--radius-hero)] px-4 pb-1.5 ${
-        compact ? "hero-card--compact pt-2.5" : "pt-5"
-      } ${dimmed ? "*:opacity-70" : ""}`}
+      className={`hero-card sticky top-2 z-20 mx-4 rounded-[var(--radius-hero)] px-4 pb-1.5 ${
+        dimmed ? "*:opacity-70" : ""
+      }`}
     >
-      <div
-        className={`hero-fade text-center text-[12px] font-medium text-[var(--color-text-muted)] ${
-          compact ? "hero-fade--gone" : ""
-        }`}
-      >
+      <div className="hero-fade text-center text-[12px] font-medium text-[var(--color-text-muted)]">
         {heading}
       </div>
 
-      <div className={`hero-ease text-center ${compact ? "mt-0 mb-1.5" : "mt-1 mb-4"}`}>
-        <HeroAmount
-          value={summary.safeToSpend}
-          label={heading.toLowerCase()}
-          compact={compact}
-        />
+      <div className="hero-amount-wrap text-center">
+        <HeroAmount value={summary.safeToSpend} label={heading.toLowerCase()} />
       </div>
 
       <div className="flex border-t border-[var(--color-border)]">
@@ -107,7 +97,6 @@ export function HeroCard({
           tone="text-[var(--color-mint)]"
           underline="bg-[var(--color-mint)]"
           active={tab === "Income"}
-          compact={compact}
           onClick={() => onSelect("Income")}
         />
         <Divider />
@@ -117,7 +106,6 @@ export function HeroCard({
           tone="text-[var(--color-danger)]"
           underline="bg-[var(--color-danger)]"
           active={tab === "Expense"}
-          compact={compact}
           onClick={() => onSelect("Expense")}
         />
         <Divider />
@@ -127,7 +115,6 @@ export function HeroCard({
           tone="text-[var(--color-savings)]"
           underline="bg-[var(--color-savings)]"
           active={tab === "Savings"}
-          compact={compact}
           onClick={() => onSelect("Savings")}
         />
       </div>
@@ -145,7 +132,6 @@ interface TabProps {
   tone: string;
   underline: string;
   active: boolean;
-  compact: boolean;
   onClick: () => void;
 }
 
@@ -155,20 +141,15 @@ function Tab({
   tone,
   underline,
   active,
-  compact,
   onClick,
 }: TabProps) {
   return (
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`hero-ease min-w-0 flex-1 text-center ${compact ? "pt-1.5 pb-1" : "pt-3 pb-2"}`}
+      className="hero-tab min-w-0 flex-1 text-center"
     >
-      <span
-        className={`hero-fade block text-[11.5px] font-medium text-[var(--color-text-muted)] ${
-          compact ? "hero-fade--gone" : ""
-        }`}
-      >
+      <span className="hero-fade block text-[11.5px] font-medium text-[var(--color-text-muted)]">
         {label}
       </span>
       <span
@@ -179,7 +160,7 @@ function Tab({
         {formatKrShort(amount)}
       </span>
       <span
-        className={`hero-ease relative mx-auto block h-[3px] w-[34px] ${compact ? "mt-1" : "mt-2"}`}
+        className="hero-underline relative mx-auto block h-[3px] w-[34px]"
       >
         {active && (
           <motion.span
