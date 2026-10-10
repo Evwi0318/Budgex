@@ -116,11 +116,21 @@ test("en kort flik går inte att scrolla och komprimeras aldrig", async ({ page 
 });
 
 test("kortet följer scrollen steg för steg", async ({ page }) => {
-  const sizes: number[] = [];
-  for (let top = 0; top <= 90; top += 10) {
-    await scrollTo(page, top);
-    sizes.push(await fontSize(page));
-  }
+  const sizes = await page.locator("main").evaluate(async (main) => {
+    const amount = main.querySelector(".hero-amount")!;
+    const read = () => parseFloat(getComputedStyle(amount).fontSize);
+    const seen = [read()];
+
+    for (let top = 10; top <= 90; top += 10) {
+      const scrolled = new Promise((resolve) =>
+        main.addEventListener("scroll", resolve, { once: true })
+      );
+      main.scrollTop = top;
+      await scrolled;
+      seen.push(read());
+    }
+    return seen;
+  });
 
   const steps = sizes.slice(1).map((size, i) => sizes[i] - size);
   expect(sizes[0]).toBeCloseTo(42, 0);
