@@ -17,7 +17,6 @@ export function AppShell() {
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   const [{ year, month }, setMonth] = useState(currentMonth);
-  const [scrolled, setScrolled] = useState(false);
   const [compact, setCompact] = useState(false);
 
   // Gamla bokmärken på /savings ska landa på sparandefliken direkt, utan att
@@ -41,7 +40,6 @@ export function AppShell() {
   const handleScroll = (event: UIEvent<HTMLElement>) => {
     const top = event.currentTarget.scrollTop;
 
-    setScrolled(top > 8);
     setCompact((was) => (was ? top > 10 : top > 24));
   };
 
@@ -107,21 +105,6 @@ export function AppShell() {
             </div>
           </main>
         </MonthContext.Provider>
-
-        {/*
-          Egna gradientlager, inte mask-image på scroll-ytan: en mask skapar en
-          grupp som slår ut backdrop-filter hos barnen, och då försvinner
-          glaset i hero-kortet. Ligger över raderna men under kortet (z-20).
-        */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 transition-opacity duration-200"
-          style={{
-            opacity: scrolled ? 1 : 0,
-            background:
-              "linear-gradient(to bottom, var(--color-bg) 35%, transparent 100%)",
-          }}
-        />
 
         <div
           aria-hidden
