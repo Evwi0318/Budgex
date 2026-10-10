@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { useOutletContext } from "react-router-dom";
 import { MonthNav } from "../components/budget/MonthNav";
 import { HeroCard } from "../components/home/HeroCard";
 import { EntryRow } from "../components/home/EntryRow";
@@ -35,7 +34,6 @@ export function Home() {
 
 function MobileHome() {
   const { year, month, tab, setTab, goToPrevMonth, goToNextMonth } = useMonth();
-  const { compact } = useOutletContext<{ compact: boolean }>();
 
   const { data: plan, isLoading } = useMonthPlanQuery(year, month);
   // En enda låsinstans för alla tre flikarna — samma månad kan inte vara
@@ -258,7 +256,6 @@ function MobileHome() {
               tab={tab}
               onSelect={setTab}
               dimmed={isLocked}
-              compact={compact}
               onInspect={() => setInspecting(true)}
             />
           </>

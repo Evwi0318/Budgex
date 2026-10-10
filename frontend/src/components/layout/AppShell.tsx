@@ -12,12 +12,13 @@ import type { HomeTab, MonthContextValue } from "../../context/MonthContext";
  * så Home avmonteras när man går dit — låg valet i Home skulle månaden
  * hoppa tillbaka till dagens när man kom tillbaka.
  */
+const HERO_RANGE = 90;
+
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   const [{ year, month }, setMonth] = useState(currentMonth);
-  const [compact, setCompact] = useState(false);
 
   // Gamla bokmärken på /savings ska landa på sparandefliken direkt, utan att
   // först blinka förbi utgifterna
@@ -25,7 +26,7 @@ export function AppShell() {
     location.pathname === "/savings" ? "Savings" : "Expense"
   );
 
-  const outlet = useOutlet({ compact });
+  const outlet = useOutlet();
 
   useEffect(() => {
     if (location.pathname === "/savings") navigate("/", { replace: true });
@@ -34,13 +35,10 @@ export function AppShell() {
   const step = (delta: number) =>
     setMonth((current) => shiftMonth(current, delta));
 
-  // Kortet krymper vid 24 px men växer inte tillbaka förrän vid 10. Utan
-  // glappet kan komprimeringen göra sidan så kort att den skrollar tillbaka
-  // över gränsen, och kortet börjar blinka.
+  // Kortet följer scrollen i stället för att byta läge vid en gräns
   const handleScroll = (event: UIEvent<HTMLElement>) => {
-    const top = event.currentTarget.scrollTop;
-
-    setCompact((was) => (was ? top > 10 : top > 24));
+    const main = event.currentTarget;
+    main.style.setProperty("--hero-p", String(Math.min(main.scrollTop / HERO_RANGE, 1)));
   };
 
   // Ny identitet varje render skulle tvinga om varje läsare av kontexten,
