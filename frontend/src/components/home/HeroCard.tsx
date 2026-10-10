@@ -80,7 +80,7 @@ export function HeroCard({
         event.stopPropagation();
       }}
       style={{ WebkitTouchCallout: "none" }}
-      className={`hero-card sticky top-2 z-20 mx-4 rounded-[var(--radius-hero)] px-4 pb-1.5 ${
+      className={`hero-card hero-ease sticky top-2 z-20 mx-4 rounded-[var(--radius-hero)] px-4 pb-1.5 ${
         compact ? "hero-card--compact pt-2.5" : "pt-5"
       } ${dimmed ? "*:opacity-70" : ""}`}
     >
@@ -92,7 +92,7 @@ export function HeroCard({
         {heading}
       </div>
 
-      <div className={`text-center ${compact ? "mt-0 mb-1.5" : "mt-1 mb-4"}`}>
+      <div className={`hero-ease text-center ${compact ? "mt-0 mb-1.5" : "mt-1 mb-4"}`}>
         <HeroAmount
           value={summary.safeToSpend}
           label={heading.toLowerCase()}
@@ -162,7 +162,7 @@ function Tab({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`min-w-0 flex-1 text-center ${compact ? "pt-1.5 pb-1" : "pt-3 pb-2"}`}
+      className={`hero-ease min-w-0 flex-1 text-center ${compact ? "pt-1.5 pb-1" : "pt-3 pb-2"}`}
     >
       <span
         className={`hero-fade block text-[11.5px] font-medium text-[var(--color-text-muted)] ${
@@ -179,7 +179,7 @@ function Tab({
         {formatKrShort(amount)}
       </span>
       <span
-        className={`relative mx-auto block h-[3px] w-[34px] ${compact ? "mt-1" : "mt-2"}`}
+        className={`hero-ease relative mx-auto block h-[3px] w-[34px] ${compact ? "mt-1" : "mt-2"}`}
       >
         {active && (
           <motion.span
