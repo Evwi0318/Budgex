@@ -149,3 +149,37 @@ test("svep med finger byter flik", async ({ page }) => {
 
   await expect(activeTab(page)).toContainText("Sparande");
 });
+
+test("svep från en scrollad lista: kortet står kvar och nya fliken börjar överst", async ({ page }) => {
+  await openApp(page, { expenses: manyExpenses(25) });
+  const main = page.locator("main");
+  await main.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await page.waitForTimeout(300);
+
+  const hero = page.locator(".hero-card");
+  const stuck = (await hero.boundingBox())!.y;
+
+  // Kortet och strecket ska aldrig lämna skärmen under bytet
+  await page.evaluate(() => {
+    const w = window as unknown as { lowest: number };
+    w.lowest = Infinity;
+    const watch = () => {
+      const card = document.querySelector(".hero-card")!.getBoundingClientRect();
+      w.lowest = Math.min(w.lowest, card.top);
+      requestAnimationFrame(watch);
+    };
+    watch();
+  });
+
+  await drag(page, await heroCentre(page), 160);
+  await page.waitForTimeout(400);
+
+  await expect(activeTab(page)).toContainText("Inkomst");
+  const lowest = await page.evaluate(() => (window as unknown as { lowest: number }).lowest);
+  expect(lowest).toBeGreaterThanOrEqual(stuck - 1);
+
+  await expect.poll(() => main.evaluate((el) => el.scrollTop)).toBe(0);
+  await expect(page.getByRole("button", { name: /^Öppna / }).first()).toBeInViewport();
+});

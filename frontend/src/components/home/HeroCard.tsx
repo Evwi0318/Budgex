@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { motion } from "motion/react";
 import { HeroAmount } from "../ui/HeroAmount";
 import { formatKrShort } from "../../lib/format";
 import type { PointerEvent as ReactPointerEvent } from "react";
@@ -90,12 +89,11 @@ export function HeroCard({
         <HeroAmount value={summary.safeToSpend} label={heading.toLowerCase()} />
       </div>
 
-      <div className="flex border-t border-[var(--color-border)]">
+      <div className="relative flex border-t border-[var(--color-border)]">
         <Tab
           label="Inkomst"
           amount={summary.income}
           tone="text-[var(--color-mint)]"
-          underline="bg-[var(--color-mint)]"
           active={tab === "Income"}
           onClick={() => onSelect("Income")}
         />
@@ -104,7 +102,6 @@ export function HeroCard({
           label="Utgifter"
           amount={summary.totalExpenses}
           tone="text-[var(--color-danger)]"
-          underline="bg-[var(--color-danger)]"
           active={tab === "Expense"}
           onClick={() => onSelect("Expense")}
         />
@@ -113,14 +110,30 @@ export function HeroCard({
           label="Sparande"
           amount={summary.totalSavings}
           tone="text-[var(--color-savings)]"
-          underline="bg-[var(--color-savings)]"
           active={tab === "Savings"}
           onClick={() => onSelect("Savings")}
         />
+
+        {/* Inte layoutId: det mätte fel i en scrollad lista och strecket flög iväg */}
+        <span
+          aria-hidden
+          style={{ transform: `translateX(${UNDERLINE[tab].at})` }}
+          className="absolute bottom-0 left-0 flex w-1/3 justify-center transition-transform duration-300 ease-[var(--ease-hero)]"
+        >
+          <span
+            className={`h-[3px] w-[34px] rounded-full transition-colors duration-300 ${UNDERLINE[tab].color}`}
+          />
+        </span>
       </div>
     </div>
   );
 }
+
+const UNDERLINE: Record<HomeTab, { at: string; color: string }> = {
+  Income: { at: "0%", color: "bg-[var(--color-mint)]" },
+  Expense: { at: "100%", color: "bg-[var(--color-danger)]" },
+  Savings: { at: "200%", color: "bg-[var(--color-savings)]" },
+};
 
 const Divider = () => (
   <div className="my-3 w-px self-stretch bg-[var(--color-border)]" />
@@ -130,7 +143,6 @@ interface TabProps {
   label: string;
   amount: number;
   tone: string;
-  underline: string;
   active: boolean;
   onClick: () => void;
 }
@@ -139,7 +151,6 @@ function Tab({
   label,
   amount,
   tone,
-  underline,
   active,
   onClick,
 }: TabProps) {
@@ -159,17 +170,7 @@ function Tab({
       >
         {formatKrShort(amount)}
       </span>
-      <span
-        className="hero-underline relative mx-auto block h-[3px] w-[34px]"
-      >
-        {active && (
-          <motion.span
-            layoutId="hero-tab-underline"
-            transition={{ type: "spring", damping: 28, stiffness: 340 }}
-            className={`absolute inset-0 rounded-full ${underline}`}
-          />
-        )}
-      </span>
+      <span className="hero-underline block h-[3px]" />
     </button>
   );
 }

@@ -24,6 +24,23 @@ interface Gesture {
   startX: number; // Avgörande: sparar den faktiska fysiska positionen när svepet börjar
 }
 
+// Flikens topp när sidan står överst och hero-kortet är fullt utfällt
+function topAtStart(main: HTMLElement, panel: HTMLElement) {
+  const scroll = main.scrollTop;
+  const hero = main.style.getPropertyValue("--hero-p");
+  const shift = panel.style.transform;
+
+  main.style.setProperty("--hero-p", "0");
+  main.scrollTop = 0;
+  panel.style.transform = "";
+  const top = panel.getBoundingClientRect().top;
+
+  main.style.setProperty("--hero-p", hero);
+  main.scrollTop = scroll;
+  panel.style.transform = shift;
+  return top;
+}
+
 interface SwipeTabsProps {
   index: number;
   count: number;
@@ -46,6 +63,9 @@ export function SwipeTabs({
   const swiped = useRef(false);
   const settled = useRef(index);
   const settling = useRef<ReturnType<typeof animate> | null>(null);
+  const panels = useRef<(HTMLDivElement | null)[]>([]);
+  const scrolling = useRef<ReturnType<typeof animate> | null>(null);
+  const lift = useRef<{ from: number; y: number } | null>(null);
 
   const x = useMotionValue(-index);
   const deckX = useTransform(x, (value) => `${value * 100}%`);
@@ -61,17 +81,86 @@ export function SwipeTabs({
 
   const width = () => deckRef.current?.offsetWidth ?? 0;
 
+  // Däcket behåller höjden så hero-kortet inte scrollas ur bild, och de andra
+  // flikarna läggs precis under kortet i stället för långt ovanför skärmen.
+  const beginMove = () => {
+    moving.set(1);
+    scrolling.current?.stop();
+    if (lift.current) return;
+
+    const deck = deckRef.current;
+    const hero = deck?.previousElementSibling;
+    if (!deck || !hero) return;
+
+    const y = Math.max(
+      0,
+      hero.getBoundingClientRect().bottom - deck.getBoundingClientRect().top
+    );
+    lift.current = { from: settled.current, y };
+    deck.style.minHeight = `${deck.offsetHeight}px`;
+
+    panels.current.forEach((panel, slot) => {
+      if (panel) {
+        panel.style.transform = slot === settled.current ? "" : `translateY(${y}px)`;
+      }
+    });
+  };
+
+  // En ny flik börjar överst. Sidan glider dit och fliken följer med,
+  // eftersom hero-kortet växer med scrollen och ett hopp skulle rycka.
+  const endMove = () => {
+    moving.set(0);
+    const shift = lift.current;
+    lift.current = null;
+    if (!shift) return;
+
+    const deck = deckRef.current;
+    const main = deck?.closest("main");
+    const incoming = panels.current[settled.current];
+
+    const reset = () => {
+      if (deck) deck.style.minHeight = "";
+      panels.current.forEach((panel) => {
+        if (panel) panel.style.transform = "";
+      });
+    };
+
+    if (!main || !incoming || settled.current === shift.from || shift.y === 0) {
+      reset();
+      return;
+    }
+
+    const start = main.scrollTop;
+    const from = incoming.getBoundingClientRect().top;
+    const to = topAtStart(main, incoming);
+
+    scrolling.current = animate(0, 1, {
+      duration: 0.35,
+      ease: [0.2, 0.7, 0.3, 1],
+      onUpdate: (t) => {
+        main.scrollTop = start * (1 - t);
+        // Hero-kortet ska byta storlek nu, inte nästa bildruta
+        main.dispatchEvent(new Event("scroll"));
+        incoming.style.transform = "";
+        const natural = incoming.getBoundingClientRect().top;
+        incoming.style.transform = `translateY(${from + (to - from) * t - natural}px)`;
+      },
+      onComplete: reset,
+    });
+  };
+
   const glide = (to: number) => {
     settling.current?.stop();
-    moving.set(1);
+    beginMove();
     settling.current = animate(x, to, {
       ...SETTLE,
-      onComplete: () => moving.set(0),
+      onComplete: endMove,
     });
   };
 
   useEffect(() => {
     if (settled.current === index) return;
+    beginMove();
     settled.current = index;
     glide(-index);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,7 +199,7 @@ export function SwipeTabs({
       if (from.axis === "x") {
         swiped.current = true;
         settling.current?.stop();
-        moving.set(1);
+        beginMove();
         event.currentTarget.setPointerCapture(event.pointerId);
       }
     }
@@ -197,6 +286,9 @@ export function SwipeTabs({
           {Array.from({ length: count }, (_, slot) => (
             <div
               key={slot}
+              ref={(panel) => {
+                panels.current[slot] = panel;
+              }}
               aria-hidden={slot !== index || undefined}
               inert={slot !== index ? true : undefined}
               className={
