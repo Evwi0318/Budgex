@@ -29,7 +29,7 @@ export function SavingsTab({
   const { year, month } = useMonth();
 
   const { data: savings, isLoading } = useSavingsQuery(year, month);
-  const editor = useSavingsEditor(year, month, savings, adding, onCloseAdding);
+  const editor = useSavingsEditor(year, month, savings, plan.summary, adding, onCloseAdding);
 
   if (isLoading) {
     return (
@@ -95,7 +95,7 @@ export function SavingsTab({
 
       {hasAccounts && (
         <button
-          onClick={() => editor.transferAll.mutate(!allDone)}
+          onClick={editor.toggleAll}
           disabled={isLocked}
           className={`mb-2 flex min-h-[50px] w-full flex-col items-center justify-center gap-1 rounded-[14px] border px-3.5 py-3 text-[14px] font-extrabold transition not-disabled:active:scale-[0.99] ${
             allDone

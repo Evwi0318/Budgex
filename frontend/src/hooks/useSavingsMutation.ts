@@ -17,6 +17,12 @@ export interface SavingsAccountInput {
   items: SavingsItem[];
 }
 
+/** acknowledged: användaren har sett att planen saknar täckning och överför ändå */
+export interface Transfer {
+  isTransferred: boolean;
+  acknowledged?: boolean;
+}
+
 export function useAddSavingsAccountMutation(year: number, month: number) {
   const { request } = useApi();
 
@@ -52,12 +58,12 @@ export function useTransferMutation(year: number, month: number) {
   const { request } = useApi();
 
   // Överfört-bocken syns bara i sparandet, så månaden behöver inte hämtas om
-  return useOptimisticMutation<SavingsMonth, { id: string; isTransferred: boolean }>(
+  return useOptimisticMutation<SavingsMonth, Transfer & { id: string }>(
     ["savings", year, month],
-    ({ id, isTransferred }) =>
+    ({ id, ...transfer }) =>
       request(`/api/months/${year}/${month}/savings/${id}/transferred`, {
         method: "PUT",
-        body: JSON.stringify({ isTransferred }),
+        body: JSON.stringify(transfer),
       }),
     (savings, { id, isTransferred }) => ({
       ...savings,
@@ -71,14 +77,14 @@ export function useTransferMutation(year: number, month: number) {
 export function useTransferAllMutation(year: number, month: number) {
   const { request } = useApi();
 
-  return useOptimisticMutation<SavingsMonth, boolean>(
+  return useOptimisticMutation<SavingsMonth, Transfer>(
     ["savings", year, month],
-    (isTransferred) =>
+    (transfer) =>
       request(`/api/months/${year}/${month}/savings/transferred`, {
         method: "PUT",
-        body: JSON.stringify({ isTransferred }),
+        body: JSON.stringify(transfer),
       }),
-    (savings, isTransferred) => ({
+    (savings, { isTransferred }) => ({
       ...savings,
       accounts: savings.accounts.map((account) => ({ ...account, isTransferred })),
     })

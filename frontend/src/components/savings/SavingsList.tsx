@@ -33,12 +33,7 @@ export function SavingsList({ editor, sources, locked }: SavingsListProps) {
           sources={sources}
           locked={locked}
           onOpen={() => editor.openEdit(account)}
-          onToggleTransfer={() =>
-            editor.transfer.mutate({
-              id: account.id,
-              isTransferred: !account.isTransferred,
-            })
-          }
+          onToggleTransfer={() => editor.toggleTransfer(account)}
         />
       ))}
     </>
@@ -98,6 +93,16 @@ export function SavingsSheet({
           index === 0 ? closeSheet() : editor.setDiscarding(false)
         }
         onCancel={() => editor.setDiscarding(false)}
+      />
+
+      <ConfirmDialog
+        open={editor.pendingTransfer !== null}
+        title="Planen går inte ihop"
+        body={`${editor.warning ?? ""} Vill du ändå markera som överfört?`}
+        actions={[{ label: "Markera ändå", tone: "primary" }]}
+        cancelLabel="Avbryt"
+        onPick={editor.confirmTransfer}
+        onCancel={editor.cancelTransfer}
       />
 
       <ConfirmDialog

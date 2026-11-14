@@ -1,5 +1,6 @@
 import { formatKr, getMonthName } from "./format";
-import type { RuleType, SavingsItem } from "../hooks/useSavingsQuery";
+import type { RuleType, SavingsItem, SourceUsage } from "../hooks/useSavingsQuery";
+import type { MonthSummary } from "../hooks/useMonthPlanQuery";
 import { currentMonth, shiftMonth } from "./month";
 
 export interface Draft {
@@ -70,3 +71,19 @@ export const overAllocationText = (
   available === 0
     ? `${name} gav 0 kr den här månaden`
     : `Du fördelar ${formatKr(allocated)} från ${name} som ger ${formatKr(available)}`;
+
+/** Samma regel som API:t: brist i hela planen först, annars en överfördelad källa */
+export function fundingWarning(
+  summary: MonthSummary,
+  sources: SourceUsage[]
+): string | null {
+  if (summary.safeToSpend < 0) {
+    return `Planen överstiger inkomsten med ${formatKr(-summary.safeToSpend)}.`;
+  }
+
+  const over = sources.find((source) => source.status === "Over");
+
+  return over
+    ? `${over.name} är överfördelad med ${formatKr(over.allocated - over.available)}.`
+    : null;
+}
