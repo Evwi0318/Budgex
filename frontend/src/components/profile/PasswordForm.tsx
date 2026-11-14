@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Label } from "../ui/Label";
 import { SheetActions, sheetField } from "../ui/SheetActions";
-import { useChangePasswordMutation } from "../../hooks/useProfileQuery";
+import { useChangePasswordMutation, useProfileQuery } from "../../hooks/useProfileQuery";
+import { useAuth } from "../../hooks/useAuth";
 
 const MIN_LENGTH = 8;
 
@@ -13,6 +14,8 @@ export function PasswordForm({ onDone }: PasswordFormProps) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const change = useChangePasswordMutation();
+  const { userEmail, signIn, logout } = useAuth();
+  const email = useProfileQuery().data?.email ?? userEmail ?? "";
 
   const tooShort = next.length > 0 && next.length < MIN_LENGTH;
   const canSave = current.length > 0 && next.length >= MIN_LENGTH;
@@ -21,9 +24,11 @@ export function PasswordForm({ onDone }: PasswordFormProps) {
     event.preventDefault();
     if (!canSave) return;
 
+    // Bytet loggar ut alla sessioner, även den här, så vi loggar in igen
+    // med det nya lösenordet. Går det inte får användaren logga in själv.
     change.mutate(
       { currentPassword: current, newPassword: next },
-      { onSuccess: onDone }
+      { onSuccess: () => signIn(email, next).then(onDone, logout) }
     );
   };
 

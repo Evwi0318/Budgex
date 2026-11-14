@@ -1,3 +1,4 @@
+using Budgex.Api.Extensions;
 using Budgex.Application.Demo;
 using Budgex.Application.Interfaces;
 using Budgex.Domain.Common;
@@ -7,6 +8,7 @@ using Budgex.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using System.Security.Cryptography;
 
 namespace Budgex.Api.Endpoints;
@@ -76,17 +78,19 @@ public static class AuthEndpoints
             BudgexDbContext db,
             HttpContext httpContext) =>
         {
+            // Okänd adress, låst konto och fel lösenord ger samma svar och tar
+            // ungefär lika lång tid, så inloggningen avslöjar inte vilka konton som finns
             var applicationUser = await userManager.FindByEmailAsync(request.Email);
             if (applicationUser is null)
             {
+                SpendPasswordCheckTime(userManager, request.Password);
                 return Results.Unauthorized();
             }
 
             if (await userManager.IsLockedOutAsync(applicationUser))
             {
-                return Results.Problem(
-                    "För många misslyckade försök. Vänta en stund och försök igen.",
-                    statusCode: StatusCodes.Status429TooManyRequests);
+                SpendPasswordCheckTime(userManager, request.Password);
+                return Results.Unauthorized();
             }
 
             var passwordValid = await userManager.CheckPasswordAsync(applicationUser, request.Password);
@@ -201,16 +205,7 @@ public static class AuthEndpoints
             // med den nya cookien gick förlorat. Har ersättaren använts är det replay.
             if (existingToken.RevokedAt is not null && (replacement is null || replacement.RevokedAt is not null))
             {
-                var allUserTokens = await db.RefreshTokens
-                    .Where(rt => rt.UserId == existingToken.UserId && rt.RevokedAt == null)
-                    .ToListAsync();
-
-                foreach (var t in allUserTokens)
-                {
-                    t.RevokedAt = DateTime.UtcNow;
-                }
-
-                await db.SaveChangesAsync();
+                await RevokeSessionsAsync(db, existingToken.UserId);
                 ClearRefreshTokenCookie(httpContext);
                 return Results.Unauthorized();
             }
@@ -268,6 +263,32 @@ public static class AuthEndpoints
             ClearRefreshTokenCookie(httpContext);
             return Results.NoContent();
         });
+
+        group.MapPost("/logout-all", async (
+            HttpContext httpContext,
+            BudgexDbContext db,
+            ClaimsPrincipal user) =>
+        {
+            await RevokeSessionsAsync(db, user.GetUserId());
+
+            ClearRefreshTokenCookie(httpContext);
+            return Results.NoContent();
+        }).RequireAuthorization();
+    }
+
+    // Ett redan utfärdat access token gäller ändå tills det löper ut (15 min)
+    public static Task RevokeSessionsAsync(BudgexDbContext db, Guid userId) =>
+        db.RefreshTokens
+            .Where(token => token.UserId == userId && token.RevokedAt == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(token => token.RevokedAt, (DateTime?)DateTime.UtcNow));
+
+    private static string? _unknownUserHash;
+
+    private static void SpendPasswordCheckTime(UserManager<ApplicationUser> userManager, string password)
+    {
+        var stranger = new ApplicationUser();
+        _unknownUserHash ??= userManager.PasswordHasher.HashPassword(stranger, Guid.NewGuid().ToString());
+        userManager.PasswordHasher.VerifyHashedPassword(stranger, _unknownUserHash, password);
     }
 
     // Ingen kolumn säger när ett demokonto skapades, men dess poster gör det:

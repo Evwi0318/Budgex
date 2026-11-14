@@ -4,6 +4,8 @@ export interface AuthContextType {
   accessToken: string | null;
   userEmail: string | null;
   setAuth: (accessToken: string, userEmail: string) => void;
+  /** Kastar ett Error med ett meddelande som kan visas för användaren */
+  signIn: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   /** Sant tills vi vet om refresh-cookien ger en giltig session */

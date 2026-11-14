@@ -37,7 +37,7 @@ export function Login() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState<Pending>(null);
 
-  const { setAuth, isAuthenticated } = useAuth();
+  const { setAuth, signIn, isAuthenticated } = useAuth();
 
   // Byte av flik börjar om från tomt: annars ligger e-post, lösenord och ett
   // felmeddelande från inloggningen kvar i registreringsformuläret, och tvärtom.
@@ -95,15 +95,7 @@ export function Login() {
         if (!registered.ok) throw new Error(readError(await registered.json()));
       }
 
-      const response = await post("/api/auth/login");
-      if (!response.ok) throw new Error("Fel e-post eller lösenord.");
-
-      const { accessToken } = await response.json();
-      if (!accessToken) {
-        throw new Error("Inloggningen gav ingen token. Försök igen.");
-      }
-
-      setAuth(accessToken, email);
+      await signIn(email, password);
     } catch (err) {
       setError(
         err instanceof Error
