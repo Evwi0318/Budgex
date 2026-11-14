@@ -327,6 +327,22 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task DeletedSource_WithAFixedRule_KeepsTheAmountAndNeedsAcknowledgement()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+        var id = await CreateAsync(client, AugustSavings, Fixed(salary, 1000m));
+
+        await client.DeleteAsync($"{AugustEntries}/{salary}?scope=Onwards");
+
+        var account = Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts);
+        var transfer = await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true });
+
+        Assert.Equal(1000m, account.Amount);
+        Assert.Equal(HttpStatusCode.Conflict, transfer.StatusCode);
+    }
+
+    [Fact]
     public async Task DeletedSource_LeavesTheRuleWithoutAName()
     {
         var client = await AuthenticateAsync();
