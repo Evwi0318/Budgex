@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AuthContext } from "./AuthContext";
+import { AuthContext, EmailNotConfirmedError } from "./AuthContext";
 import type { AuthContextType } from "./AuthContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -54,6 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // svarar 401 som ett vanligt fel lösenord, därför nämns spärren här.
     if (response.status === 429) {
       throw new Error("För många försök. Vänta en minut och försök igen.");
+    }
+    if (response.status === 403) {
+      throw new EmailNotConfirmedError(
+        "Bekräfta din e-post först. Länken finns i mejlet vi skickade när du registrerade dig."
+      );
     }
     if (!response.ok) {
       throw new Error(

@@ -8,14 +8,15 @@ using Testcontainers.PostgreSql;
 
 namespace Budgex.Tests.Integration;
 
-public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:18")
     .WithDatabase("budgex_test")
     .WithUsername("postgres")
     .WithPassword("postgres")
     .Build();
 
-    public TestOutbox Outbox { get; } = new();
+    // Som i produktion utan e-posttjänst. EmailApiFactory slår på mejlen.
+    protected virtual IEmailSender? EmailSender => null;
 
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
@@ -38,7 +39,10 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
 
             services.RemoveAll<IEmailSender>();
-            services.AddSingleton<IEmailSender>(Outbox);
+            if (EmailSender is not null)
+            {
+                services.AddSingleton(EmailSender);
+            }
         });
     }
 

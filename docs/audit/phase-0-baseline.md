@@ -142,3 +142,5 @@ rebrand if the owner prefers.
 | S2 | Fixed: unknown e-mail, wrong password and locked account all return the same 401, with equalised hashing time | this PR |
 | S3 | Fixed: a password change revokes every refresh token; the client signs in again. New "Logga ut från alla enheter". Access tokens still live up to 15 minutes | this PR |
 | S4 | Partly fixed: password reset implemented (ADR 0006), live once a mail provider is configured (`docs/email-setup.md`). E-mail verification and social sign-in remain | this PR |
+| S1 | Fixed when a mail provider is configured: registration answers the same for new and taken addresses (ADR 0007). Without a provider the 409 remains | this PR |
+| S4 | E-mail verification added (ADR 0007), live with the mail provider. Social sign-in remains | this PR |

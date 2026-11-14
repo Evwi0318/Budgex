@@ -9,11 +9,12 @@ namespace Budgex.Tests.Integration;
 
 // Taket för återställningsmejl är fem per kvart och IP, och alla tester här
 // delar IP. Därför går bara två tester via mejlet; resten hämtar token direkt.
-public sealed partial class PasswordResetTests(AuthApiFactory factory)
-    : IClassFixture<AuthApiFactory>
+public sealed partial class PasswordResetTests(EmailApiFactory factory)
+    : IClassFixture<EmailApiFactory>
 {
     private const string Password = "Test1234!";
     private const string NewPassword = "Brandnew1!";
+    private const string ResetSubject = "Återställ ditt lösenord";
 
     [Fact]
     public async Task Options_WithAnEmailSender_OfferPasswordReset()
@@ -36,7 +37,7 @@ public sealed partial class PasswordResetTests(AuthApiFactory factory)
         Assert.Equal(HttpStatusCode.Accepted, known.StatusCode);
         Assert.Equal(known.StatusCode, missing.StatusCode);
         Assert.Equal(await known.Content.ReadAsStringAsync(), await missing.Content.ReadAsStringAsync());
-        Assert.Contains(factory.Outbox.Sent, message => message.To == email);
+        Assert.Contains(factory.Outbox.Sent, message => message.To == email && message.Subject == ResetSubject);
         Assert.DoesNotContain(factory.Outbox.Sent, message => message.To == unknown);
     }
 
@@ -111,6 +112,7 @@ public sealed partial class PasswordResetTests(AuthApiFactory factory)
     {
         var email = $"{Guid.NewGuid()}@budgex.se";
         await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password });
+        await factory.ConfirmEmailAsync(email);
         return email;
     }
 
@@ -130,12 +132,12 @@ public sealed partial class PasswordResetTests(AuthApiFactory factory)
 
     private string TokenFromEmail(string email)
     {
-        var message = factory.Outbox.Sent.Last(sent => sent.To == email);
+        var message = factory.Outbox.Sent.Last(sent => sent.To == email && sent.Subject == ResetSubject);
         return Uri.UnescapeDataString(TokenInLink().Match(message.Text).Groups[1].Value);
     }
 
     [GeneratedRegex(@"token=([^\s&]+)")]
     private static partial Regex TokenInLink();
 
-    private sealed record OptionsDto(bool PasswordReset);
+    private sealed record OptionsDto(bool PasswordReset, bool EmailVerification);
 }

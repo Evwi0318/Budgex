@@ -23,6 +23,27 @@ public sealed class AuthEndpointsTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task Options_WithoutAnEmailSender_OfferNeitherResetNorVerification()
+    {
+        var options = await _factory.CreateClient().GetStringAsync("/api/auth/options");
+
+        Assert.Equal("""{"passwordReset":false,"emailVerification":false}""", options);
+    }
+
+    [Fact]
+    public async Task Register_WithoutAnEmailSender_CanSignInRightAway()
+    {
+        var client = _factory.CreateClient();
+        var email = $"{Guid.NewGuid()}@budgex.se";
+
+        var register = await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Test1234!" });
+        var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "Test1234!" });
+
+        Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+    }
+
+    [Fact]
     public async Task Register_WithDuplicateEmail_ReturnsConflict()
     {
         var client = _factory.CreateClient();

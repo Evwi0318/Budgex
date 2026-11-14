@@ -1,7 +1,10 @@
 # E-mail setup (owner)
 
-Password reset is off in production until a mail provider is configured. The
-app works without it; "Glömt lösenordet?" is simply hidden.
+Password reset and e-mail verification are off in production until a mail
+provider is configured. The app works without them: "Glömt lösenordet?" is
+hidden and new accounts can sign in straight away. Turning the provider on
+never locks out existing accounts (ADR 0007). From then on, new accounts confirm their
+address before signing in.
 
 ## Local development
 
@@ -36,7 +39,8 @@ is written there as a `.txt` file next to the API (the folder is git-ignored).
    another account, use that one instead (`gcloud run services describe budgex-api
    --region=europe-west3 --format="value(spec.template.spec.serviceAccountName)"`).
 5. Check that `https://budgex-omega.vercel.app/api/auth/options` returns
-   `{"passwordReset":true}`, then request a reset for your own address.
+   `{"passwordReset":true,"emailVerification":true}`, then register a test
+   account and request a reset for your own address.
 
 `App:FrontendUrl` in `appsettings.json` decides where links point. Update it
 when the app moves to its own domain.
