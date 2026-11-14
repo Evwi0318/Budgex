@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { Logo } from "./ui/Logo";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -118,7 +119,9 @@ export function Login() {
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
       <div className="w-full max-w-[480px] bg-[var(--color-surface)] rounded-[var(--radius-card)] p-8">
-        <h1 className="text-xl font-black text-[var(--color-text)] mb-6">Budgex</h1>
+        <h1 className="text-xl text-[var(--color-text)] mb-6">
+          <Logo size={28} />
+        </h1>
 
         <div className="flex gap-2 mb-6 border-b border-[var(--color-border)]">
           {modes.map(({ id, label }) => (

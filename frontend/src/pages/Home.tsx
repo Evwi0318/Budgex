@@ -318,7 +318,7 @@ function Empty({ plan, tab, monthName, closed }: EmptyProps) {
     return (
       <EmptyState
         emoji="👋"
-        title="Välkommen till Budgex"
+        title="Välkommen till Divunds"
         body="Börja med din inkomst — då vet appen hur mycket du har att röra dig med. Utgifterna lägger du till efteråt."
         footnote="Tryck på + nere i mitten för att lägga till."
       />
