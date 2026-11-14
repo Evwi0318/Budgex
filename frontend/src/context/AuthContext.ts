@@ -17,3 +17,6 @@ export interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(
   undefined
 );
+
+/** Rätt lösenord, men kontot väntar på att e-posten bekräftas */
+export class EmailNotConfirmedError extends Error {}

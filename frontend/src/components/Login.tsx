@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../hooks/useAuth";
+import { EmailNotConfirmedError } from "../context/AuthContext";
 import { AuthCard, AuthMessage } from "./auth/AuthCard";
 import { AuthField, AuthSubmit } from "./auth/AuthField";
 
@@ -32,6 +33,8 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
 
   const { setAuth, signIn, isAuthenticated } = useAuth();
@@ -55,6 +58,8 @@ export function Login() {
     setEmail("");
     setPassword("");
     setError("");
+    setNotice("");
+    setUnconfirmed(false);
   };
 
   const post = (path: string) =>
@@ -92,18 +97,30 @@ export function Login() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setNotice("");
+    setUnconfirmed(false);
     setPending("form");
 
     try {
       // Register ger ingen token — den skapar bara kontot, så vi
-      // loggar in direkt efteråt med samma uppgifter
+      // loggar in direkt efteråt med samma uppgifter. Med e-postverifiering
+      // svarar API:t 202 och kontot väntar i stället på länken i mejlet.
       if (mode === "register") {
         const registered = await post("/api/auth/register");
         if (!registered.ok) throw new Error(readError(await registered.json()));
+
+        if (registered.status === 202) {
+          setMode("login");
+          setPassword("");
+          setNotice(readError(await registered.json()));
+          setPending(null);
+          return;
+        }
       }
 
       await signIn(email, password);
     } catch (err) {
+      setUnconfirmed(err instanceof EmailNotConfirmedError);
       setError(
         err instanceof Error
           ? err.message
@@ -111,6 +128,19 @@ export function Login() {
       );
       setPending(null);
     }
+  }
+
+  async function resendConfirmation() {
+    setError("");
+    setUnconfirmed(false);
+
+    await fetch(`${API_URL}/api/auth/resend-confirmation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).catch(() => undefined);
+
+    setNotice("Om kontot väntar på bekräftelse har vi skickat en ny länk. Den gäller i en timme.");
   }
 
   if (isAuthenticated) return <Navigate to="/" replace />;
@@ -133,7 +163,21 @@ export function Login() {
           ))}
         </div>
 
-        {error && <AuthMessage tone="danger">{error}</AuthMessage>}
+        {notice && <AuthMessage tone="info">{notice}</AuthMessage>}
+        {error && (
+          <AuthMessage tone="danger">
+            {error}
+            {unconfirmed && (
+              <button
+                type="button"
+                onClick={resendConfirmation}
+                className="mt-2 block font-semibold underline"
+              >
+                Skicka länken igen
+              </button>
+            )}
+          </AuthMessage>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <AuthField

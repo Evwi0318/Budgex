@@ -83,6 +83,7 @@ builder.Services
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         options.Tokens.PasswordResetTokenProvider = SignedLinkTokenProvider.Name;
+        options.Tokens.EmailConfirmationTokenProvider = SignedLinkTokenProvider.Name;
     })
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<BudgexDbContext>()
@@ -162,7 +163,7 @@ builder.Services.AddRateLimiter(options =>
 
     // Varje begäran kan skicka ett mejl, så taket är lågt: mejlbomba någon
     // eller pröva adresser i mängd ska inte gå
-    options.AddPolicy(PasswordResetEndpoints.RateLimitPolicy, context =>
+    options.AddPolicy(AccountEmailEndpoints.RateLimitPolicy, context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
@@ -224,7 +225,7 @@ app.UseAuthorization();
 
 app.MapGet("/api/health", () => new { status = "healthy" });
 app.MapAuthEndpoints();
-app.MapPasswordResetEndpoints();
+app.MapAccountEmailEndpoints();
 app.MapEntryEndpoints();
 app.MapSavingsEndpoints();
 app.MapProfileEndpoints();

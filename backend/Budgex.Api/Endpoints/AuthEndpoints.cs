@@ -25,6 +25,11 @@ public static class AuthEndpoints
 
     public const string RateLimitPolicy = "auth";
 
+    private static readonly object CheckYourInbox = new
+    {
+        message = "Kolla din inkorg. Vi har skickat ett mejl med nästa steg."
+    };
+
     public static bool IsDemoEmail(string email) => email.EndsWith(DemoEmailSuffix);
 
     public static void MapAuthEndpoints(this WebApplication app)
@@ -34,12 +39,30 @@ public static class AuthEndpoints
         group.MapPost("/register", async (
             [FromBody] RegisterRequest request,
             UserManager<ApplicationUser> userManager,
-            IUserRepository userRepository) =>
+            IUserRepository userRepository,
+            IServiceProvider services,
+            IConfiguration configuration) =>
         {
+            var sender = services.GetService<IEmailSender>();
+
+            // Lösenordet prövas före allt annat, så att ett svagt lösenord ger
+            // samma fel oavsett om adressen redan har ett konto
+            if (await PasswordErrors(userManager, request.Password) is { Count: > 0 } passwordErrors)
+            {
+                return Results.BadRequest(new { errors = passwordErrors });
+            }
+
             var existingUser = await userRepository.GetByEmailAsync(request.Email);
             if (existingUser is not null)
             {
-                return Results.Conflict(new { message = "En användare med denna e-post finns redan." });
+                if (sender is null)
+                {
+                    // Utan mejl finns inget annat sätt att säga det (ADR 0007)
+                    return Results.Conflict(new { message = "En användare med denna e-post finns redan." });
+                }
+
+                await AccountEmailEndpoints.SendAlreadyRegisteredAsync(sender, configuration, existingUser.Email);
+                return Results.Accepted(value: CheckYourInbox);
             }
 
             var userId = Guid.NewGuid();
@@ -48,7 +71,10 @@ public static class AuthEndpoints
             {
                 Id = userId,
                 UserName = request.Email,
-                Email = request.Email
+                Email = request.Email,
+                // Utan e-posttjänst går adressen inte att bekräfta, och kontot
+                // ska inte låsas ute när verifieringen senare slås på
+                EmailConfirmed = sender is null
             };
 
             var identityResult = await userManager.CreateAsync(applicationUser, request.Password);
@@ -69,6 +95,12 @@ public static class AuthEndpoints
             await userRepository.AddAsync(domainUser);
             await userRepository.SaveChangesAsync();
 
+            if (sender is not null)
+            {
+                await AccountEmailEndpoints.SendConfirmationAsync(sender, userManager, configuration, applicationUser);
+                return Results.Accepted(value: CheckYourInbox);
+            }
+
             return Results.Created($"/api/auth/users/{userId}", new { id = userId, email = request.Email });
         });
 
@@ -78,6 +110,7 @@ public static class AuthEndpoints
             IUserRepository userRepository,
             ITokenService tokenService,
             BudgexDbContext db,
+            IServiceProvider services,
             HttpContext httpContext) =>
         {
             // Okänd adress, låst konto och fel lösenord ger samma svar och tar
@@ -104,6 +137,14 @@ public static class AuthEndpoints
             }
 
             await userManager.ResetAccessFailedCountAsync(applicationUser);
+
+            // Bara den som kan lösenordet får veta att kontot väntar på bekräftelse
+            if (!applicationUser.EmailConfirmed && services.GetService<IEmailSender>() is not null)
+            {
+                return Results.Json(
+                    new { message = "Bekräfta din e-post först.", needsConfirmation = true },
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
 
             var domainUser = await userRepository.GetByIdAsync(applicationUser.Id);
             if (domainUser is null)
@@ -140,7 +181,8 @@ public static class AuthEndpoints
             {
                 Id = userId,
                 UserName = email,
-                Email = email
+                Email = email,
+                EmailConfirmed = true
             };
 
             var identityResult = await userManager.CreateAsync(applicationUser, CreateDemoPassword());
@@ -276,6 +318,20 @@ public static class AuthEndpoints
             ClearRefreshTokenCookie(httpContext);
             return Results.NoContent();
         }).RequireAuthorization();
+    }
+
+    private static async Task<List<string>> PasswordErrors(
+        UserManager<ApplicationUser> userManager, string password)
+    {
+        var errors = new List<string>();
+
+        foreach (var validator in userManager.PasswordValidators)
+        {
+            var result = await validator.ValidateAsync(userManager, new ApplicationUser(), password);
+            errors.AddRange(result.Errors.Select(error => error.Description));
+        }
+
+        return errors;
     }
 
     // Ett redan utfärdat access token gäller ändå tills det löper ut (15 min)
