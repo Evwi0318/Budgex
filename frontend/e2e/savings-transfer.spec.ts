@@ -100,3 +100,15 @@ test("visar sparmålets text och när målet nås", async ({ page }) => {
   const resa = page.getByRole("button", { name: /Öppna Resa/ }).locator("xpath=../..");
   await expect(resa).not.toContainText("ungefär");
 });
+
+test("en nekad överföring rullas tillbaka och förklaras", async ({ page }) => {
+  const message = "Sparat belopp har ändrats efter överföringen.";
+  await page.route("**/api/months/*/*/savings/*/transferred", (route) =>
+    route.fulfill({ status: 409, json: { message } })
+  );
+
+  await transferSwitch(page, "Buffert").click();
+
+  await expect(page.getByRole("alert")).toHaveText(message);
+  await expect(transferSwitch(page, "Buffert")).toHaveAttribute("aria-checked", "false");
+});

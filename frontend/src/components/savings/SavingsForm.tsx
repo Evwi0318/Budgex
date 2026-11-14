@@ -97,7 +97,9 @@ export function SavingsForm({
       name: name.trim(),
       icon,
       goal: goal > 0 ? goal : null,
-      saved: goal > 0 ? saved : null,
+      // Saldot skickas bara när det ändrats här, annars skulle en överföring
+      // som gjorts medan formuläret var öppet skrivas över
+      saved: goal > 0 && saved !== (account?.saved ?? 0) ? saved : null,
       rules: Object.entries(rules).map(([sourceEntryId, draft]) => ({
         sourceEntryId,
         ruleType: draft.ruleType,

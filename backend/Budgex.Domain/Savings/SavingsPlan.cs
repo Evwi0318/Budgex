@@ -5,6 +5,8 @@ namespace Budgex.Domain.Savings;
 
 public sealed record PlannedAccount(SavingsAccount Account, decimal Amount, bool IsTransferred);
 
+public sealed record PlannedTransfer(Guid AccountId, decimal Amount);
+
 public enum SourceStatus { Ok, Full, Over }
 
 public sealed record SourceUsage(

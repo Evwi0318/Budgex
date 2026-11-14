@@ -116,6 +116,72 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task Transfer_SentManyTimesAtOnce_CountsOnce()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+        var id = await CreateAsync(client, AugustSavings, Fixed(salary, 1000m));
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ =>
+            client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true })));
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.NoContent, response.StatusCode));
+        Assert.Equal(1000m, Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts).Saved);
+    }
+
+    [Fact]
+    public async Task Transfer_RedoneManyTimesAtOnceAfterUndo_CountsOnce()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+        var id = await CreateAsync(client, AugustSavings, Fixed(salary, 1000m));
+
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true });
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = false });
+
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ =>
+            client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true })));
+
+        Assert.Equal(1000m, Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts).Saved);
+    }
+
+    [Fact]
+    public async Task Undo_AfterTheBalanceWasLowered_IsRejectedAndChangesNothing()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+        var id = await CreateAsync(client, AugustSavings, Fixed(salary, 1000m));
+
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true });
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}", WithBalance(salary, 200m));
+
+        var undo = await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = false });
+
+        var account = Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts);
+        Assert.Equal(HttpStatusCode.Conflict, undo.StatusCode);
+        Assert.True(account.IsTransferred);
+        Assert.Equal(200m, account.Saved);
+    }
+
+    [Fact]
+    public async Task UndoAll_WhenOneAccountConflicts_UndoesNone()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+        var lowered = await CreateAsync(client, AugustSavings, Fixed(salary, 1000m));
+        await CreateAsync(client, AugustSavings, Fixed(salary, 500m));
+
+        await client.PutAsJsonAsync($"{AugustSavings}/transferred", new { isTransferred = true });
+        await client.PutAsJsonAsync($"{AugustSavings}/{lowered}", WithBalance(salary, 200m));
+
+        var undo = await client.PutAsJsonAsync($"{AugustSavings}/transferred", new { isTransferred = false });
+
+        Assert.Equal(HttpStatusCode.Conflict, undo.StatusCode);
+        Assert.All((await SavingsAsync(client, AugustSavings)).Accounts,
+            account => Assert.True(account.IsTransferred));
+    }
+
+    [Fact]
     public async Task Edit_WithoutSaved_KeepsTheTransferredBalance()
     {
         var client = await AuthenticateAsync();
@@ -256,6 +322,9 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
 
     private static object Body(string name, params object[] rules) =>
         new { name, icon = "🛟", goal = (decimal?)null, saved = (decimal?)null, rules };
+
+    private static object WithBalance(Guid source, decimal saved) =>
+        new { name = "Buffert", icon = "🛟", goal = 5000m, saved, rules = new[] { Fixed(source, 1000m) } };
 
     private static async Task<Guid> CreateAsync(HttpClient client, string month, params object[] rules)
     {
