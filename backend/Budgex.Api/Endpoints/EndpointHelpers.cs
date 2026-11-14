@@ -15,6 +15,11 @@ public static class EndpointHelpers
         return true;
     }
 
+    // Kolumnerna är numeric(18,2). Fler decimaler skulle avrundas tyst av databasen.
+    public static bool HasCentsBeyondTwo(decimal value) => decimal.Round(value, 2) != value;
+
+    public const string TooManyDecimals = "Belopp kan ha högst två decimaler.";
+
     public static IResult BadRequest(string message) =>
         Results.BadRequest(new { message });
 }

@@ -116,6 +116,17 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task Create_FixedRuleWithMoreThanTwoDecimals_IsRejected()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+
+        var response = await client.PostAsJsonAsync(AugustSavings, Body("Buffert", Fixed(salary, 1000.001m)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Transfer_SentManyTimesAtOnce_CountsOnce()
     {
         var client = await AuthenticateAsync();

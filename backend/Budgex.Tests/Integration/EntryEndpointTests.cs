@@ -125,6 +125,36 @@ public sealed class EntryEndpointTests(AuthApiFactory factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(7500.5)]
+    [InlineData(7500.25)]
+    public async Task Create_WithAtMostTwoDecimals_IsAccepted(decimal amount)
+    {
+        var client = await AuthenticateAsync();
+
+        var response = await client.PostAsJsonAsync(August, new
+        {
+            kind = "Expense", name = "Hyra", category = "Housing",
+            amount, isAutogiro = false, repeats = true
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WithMoreThanTwoDecimals_IsRejected()
+    {
+        var client = await AuthenticateAsync();
+
+        var response = await client.PostAsJsonAsync(August, new
+        {
+            kind = "Expense", name = "Hyra", category = "Housing",
+            amount = 7500.125m, isAutogiro = false, repeats = true
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task Create_IncomeCategoryOnExpense_IsRejected()
     {

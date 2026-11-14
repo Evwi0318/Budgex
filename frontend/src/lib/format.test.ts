@@ -23,3 +23,14 @@ describe("formatKrShort", () => {
     expect(formatKrShort(-1_376_678)).not.toMatch(/1,4/);
   });
 });
+
+describe("formatKr", () => {
+  it("visar aldrig minus noll", () => {
+    expect(formatKr(-0)).toBe("0 kr");
+    expect(formatKr(-0.4)).toBe("0 kr");
+  });
+
+  it("behåller minustecknet på riktiga negativa belopp", () => {
+    expect(formatKr(-3)).toBe("\u22123 kr");
+  });
+});

@@ -4,7 +4,7 @@ import { SheetActions, sheetField } from "../ui/SheetActions";
 import { SourcePicker } from "./SourcePicker";
 import { SavingsItems } from "./SavingsItems";
 import { categoryOf } from "../../lib/categories";
-import { formatNumber } from "../../lib/format";
+import { formatKr, formatNumber } from "../../lib/format";
 import { parseAmount } from "../../lib/amount";
 import { saveError } from "../../lib/apiError";
 import { draftAmount, goalProgress, monthlyFromItems } from "../../lib/savings";
@@ -262,10 +262,13 @@ interface GoalHintProps {
 function GoalHint({ goal, saved, perMonth }: GoalHintProps) {
   if (goal <= 0) return null;
 
+  // Sparandet stoppas aldrig automatiskt; användaren väljer själv att justera
   if (saved >= goal) {
     return (
       <p className="text-[12px] leading-[19px] font-semibold text-[var(--color-mint)]">
-        Målet är redan nått 🎉
+        Målet är nått.
+        {perMonth > 0 &&
+          ` Sparandet fortsätter med ${formatKr(perMonth)} i månaden tills du ändrar eller tar bort källan.`}
       </p>
     );
   }
@@ -285,6 +288,9 @@ function GoalHint({ goal, saved, perMonth }: GoalHintProps) {
       <b className="block font-extrabold text-[var(--color-mint)] first-letter:uppercase">
         {goalProgress(goal, saved, perMonth).eta}
       </b>
+      <span className="mt-1 block font-medium">
+        Beräknat utifrån den här månadens sparande. Datumet flyttar sig när inkomsten ändras.
+      </span>
     </p>
   );
 }

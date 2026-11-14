@@ -41,12 +41,25 @@ public class SavingsPlanTests
     }
 
     [Fact]
-    public void PercentageRule_RoundsAwayFromZero()
+    public void PercentageRule_RoundsDownToWholeKronor()
     {
         var account = Account(August, Percent(Salary, 10m));
-        var sources = new Dictionary<Guid, decimal> { [Salary] = 1_005m };
+        var sources = new Dictionary<Guid, decimal> { [Salary] = 1_009m };
 
-        Assert.Equal(101m, SavingsPlan.PlannedTotal(account, sources));
+        Assert.Equal(100m, SavingsPlan.PlannedTotal(account, sources));
+    }
+
+    [Fact]
+    public void PercentageRules_ThatAddUpToTheSource_AreNeverOverAllocatedByRounding()
+    {
+        var first = Account(August, Percent(Salary, 50m));
+        var second = Account(August, Percent(Salary, 50m));
+        var sources = new Dictionary<Guid, decimal> { [Salary] = 1_001m };
+
+        var usage = SavingsPlan.Sources(August, [first, second], sources).Single();
+
+        Assert.Equal(1_000m, usage.Allocated);
+        Assert.NotEqual(SourceStatus.Over, usage.Status);
     }
 
     [Fact]

@@ -17,10 +17,12 @@ public sealed record SourceUsage(
 
 public static class SavingsPlan
 {
+    // Procent avrundas nedåt till hela kronor: avrundning får aldrig fördela mer
+    // än källan ger, och resten stannar i kvar att spendera (ADR 0005)
     public static decimal AmountFor(AllocationRule rule, decimal sourceAmount) =>
         rule.RuleType == RuleType.Fixed
             ? rule.Value
-            : Math.Round(sourceAmount * rule.Value / 100m, MidpointRounding.AwayFromZero);
+            : Math.Floor(sourceAmount * rule.Value / 100m);
 
     public static decimal MonthlyFromItems(IEnumerable<SavingsItem> items) =>
         Math.Ceiling(items.Sum(item => item.YearlyAmount) / 12m);
