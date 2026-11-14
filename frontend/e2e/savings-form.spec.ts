@@ -40,6 +40,7 @@ test("sparar målbeloppet och visar när det nås", async ({ page }) => {
   // Datumet ligger på egen rad, så raderna kollas var för sig
   await expect(sheet).toContainText("är du framme");
   await expect(sheet).toContainText(/ungefär \w+ \d{4}/);
+  await expect(sheet).toContainText("Beräknat utifrån den här månadens sparande");
 
   await sheet.getByRole("button", { name: "Lägg till" }).click();
 

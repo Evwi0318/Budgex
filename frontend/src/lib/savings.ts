@@ -11,7 +11,7 @@ export interface Draft {
 export const draftAmount = (draft: Draft, available: number): number =>
   draft.ruleType === "Fixed"
     ? draft.value
-    : Math.round((available * draft.value) / 100);
+    : Math.floor((available * draft.value) / 100);
 
 export const monthlyFromItems = (items: SavingsItem[]): number =>
   Math.ceil(items.reduce((sum, item) => sum + item.yearlyAmount, 0) / 12);
@@ -33,12 +33,17 @@ export function goalProgress(
   const pct = Math.min(100, (saved / goal) * 100);
 
   if (left === 0) {
+    const over = saved - goal;
+
     return {
       pct: 100,
       nextPct: 0,
       done: true,
-      text: `${formatKr(saved)} sparat`,
-      eta: "Målet är nått 🎉",
+      text:
+        over > 0
+          ? `${formatKr(saved)} sparat, ${formatKr(over)} över målet`
+          : `${formatKr(saved)} sparat`,
+      eta: "Målet är nått",
     };
   }
 

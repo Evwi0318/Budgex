@@ -21,6 +21,10 @@ describe("draftAmount", () => {
     expect(draftAmount({ ruleType: "Percentage", value: 10 }, 25800)).toBe(2580);
   });
 
+  it("avrundar procent nedåt som API:t", () => {
+    expect(draftAmount({ ruleType: "Percentage", value: 10 }, 1009)).toBe(100);
+  });
+
   it("ger 0 när källan gav 0", () => {
     expect(draftAmount({ ruleType: "Percentage", value: 24 }, 0)).toBe(0);
   });
@@ -43,13 +47,16 @@ describe("goalProgress", () => {
     const result = goalProgress(1000, 1000, 500);
 
     expect(result.done).toBe(true);
-    expect(result.eta).toBe("Målet är nått 🎉");
+    expect(result.eta).toBe("Målet är nått");
     expect(result.pct).toBe(100);
     expect(plain(result.text)).toBe("1 000 kr sparat");
   });
 
-  it("räknar översparande som nått mål", () => {
-    expect(goalProgress(1000, 1500, 500).done).toBe(true);
+  it("räknar översparande som nått mål och visar överskottet", () => {
+    const result = goalProgress(1000, 1500, 500);
+
+    expect(result.done).toBe(true);
+    expect(plain(result.text)).toBe("1 500 kr sparat, 500 kr över målet");
   });
 
   it("säger 'inget avsatt' när ingen källa är vald", () => {

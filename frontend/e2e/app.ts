@@ -108,7 +108,7 @@ const ruleAmount = (rule: Rule, income: Entry[]) => {
     amount:
       rule.ruleType === "Fixed"
         ? rule.value
-        : Math.round((available * rule.value) / 100),
+        : Math.floor((available * rule.value) / 100),
   };
 };
 

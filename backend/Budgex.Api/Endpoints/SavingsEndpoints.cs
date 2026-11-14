@@ -244,10 +244,14 @@ public static class SavingsEndpoints
         : r.Rules.Any(rule => rule.Value < 0) ? "Regelvärdet kan inte vara negativt."
         : r.Rules.Any(rule => Percentage(rule) && rule.Value > 100) ? "Procenten kan inte överstiga 100."
         : r.Rules.Any(rule => !Percentage(rule) && rule.Value > MaxAmount) ? "Beloppet är för stort."
+        : r.Goal is decimal goal && HasCentsBeyondTwo(goal) ? TooManyDecimals
+        : r.Saved is decimal saved && HasCentsBeyondTwo(saved) ? TooManyDecimals
+        : r.Rules.Any(rule => HasCentsBeyondTwo(rule.Value)) ? TooManyDecimals
         : Items(r) is not { Count: > 0 } items ? null
         : r.Rules.Count != 1 ? "Ett konto med poster behöver exakt en källa."
         : items.Any(item => item.Name.Length is 0 or > 40) ? "Postens namn är ogiltigt."
         : items.Any(item => item.YearlyAmount is <= 0 or > MaxAmount) ? "Postens belopp är ogiltigt."
+        : items.Any(item => HasCentsBeyondTwo(item.YearlyAmount)) ? TooManyDecimals
         : items.Any(item => item.DueMonth is < 1 or > 12) ? "Postens månad är ogiltig."
         : null;
 

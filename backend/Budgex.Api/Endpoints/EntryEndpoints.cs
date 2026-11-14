@@ -181,6 +181,7 @@ public static class EntryEndpoints
         : request.Name.Trim().Length > 40 ? "Namnet är för långt."
         : request.Amount < 0 ? "Beloppet kan inte vara negativt."
         : request.Amount > MaxAmount ? "Beloppet är för stort."
+        : HasCentsBeyondTwo(request.Amount) ? TooManyDecimals
         : null;
 }
 

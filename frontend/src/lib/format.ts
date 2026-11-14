@@ -3,9 +3,11 @@ const kr = new Intl.NumberFormat("sv-SE", {
   maximumFractionDigits: 0,
 });
 
-export const formatKr = (value: number): string => `${kr.format(value)} kr`;
+/** Ett belopp som avrundas till noll ska aldrig visas som "−0" */
+export const formatNumber = (value: number): string =>
+  kr.format(value).replace(/^[-\u2212]0$/, "0");
 
-export const formatNumber = (value: number): string => kr.format(value);
+export const formatKr = (value: number): string => `${formatNumber(value)} kr`;
 
 const tenths = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 });
 
