@@ -25,3 +25,5 @@ dist/
 .DS_Store
 Thumbs.db
 .idea/
+# Lokala mejl från PickupDirectoryEmailSender
+mail-outbox/

@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../hooks/useAuth";
-import { Logo } from "./ui/Logo";
+import { AuthCard, AuthMessage } from "./auth/AuthCard";
+import { AuthField, AuthSubmit } from "./auth/AuthField";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -25,11 +27,6 @@ function readError(body: unknown): string {
   return "Något gick fel. Försök igen.";
 }
 
-const inputClasses =
-  "w-full bg-[var(--color-surface-2)] text-[var(--color-text)] border border-[var(--color-border)] rounded-[var(--radius-card)] px-3 py-2 focus:outline-none focus:border-[var(--color-mint)]";
-
-const labelClasses = "block text-sm text-[var(--color-text-muted)] mb-2";
-
 export function Login() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -38,6 +35,16 @@ export function Login() {
   const [pending, setPending] = useState<Pending>(null);
 
   const { setAuth, signIn, isAuthenticated } = useAuth();
+
+  // Återställning finns bara när API:t har en e-posttjänst
+  const { data: options } = useQuery({
+    queryKey: ["auth-options"],
+    queryFn: async () => {
+      const response = await fetch(`${API_URL}/api/auth/options`);
+      return (await response.json()) as { passwordReset: boolean };
+    },
+    staleTime: Infinity,
+  });
 
   // Byte av flik börjar om från tomt: annars ligger e-post, lösenord och ett
   // felmeddelande från inloggningen kvar i registreringsformuläret, och tvärtom.
@@ -109,12 +116,7 @@ export function Login() {
   if (isAuthenticated) return <Navigate to="/" replace />;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
-      <div className="w-full max-w-[480px] bg-[var(--color-surface)] rounded-[var(--radius-card)] p-8">
-        <h1 className="text-xl text-[var(--color-text)] mb-6">
-          <Logo size={28} />
-        </h1>
-
+    <AuthCard>
         <div className="flex gap-2 mb-6 border-b border-[var(--color-border)]">
           {modes.map(({ id, label }) => (
             <button
@@ -131,44 +133,37 @@ export function Login() {
           ))}
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-[var(--color-danger-wash)] text-[var(--color-danger)] rounded-[var(--radius-card)]">
-            {error}
-          </div>
-        )}
+        {error && <AuthMessage tone="danger">{error}</AuthMessage>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block">
-            <span className={labelClasses}>E-post</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClasses}
-              required
-            />
-          </label>
+          <AuthField
+            label="E-post"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            autoComplete="email"
+          />
 
-          <label className="block">
-            <span className={labelClasses}>Lösenord</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputClasses}
-              required
-            />
-          </label>
+          <AuthField
+            label="Lösenord"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+          />
 
-          <button
-            type="submit"
-            disabled={pending !== null}
-            className="w-full bg-[var(--color-mint)] text-[var(--color-on-mint)] font-bold py-2 rounded-[var(--radius-pill)] transition hover:opacity-90 disabled:opacity-50"
-          >
-            {pending === "form"
-              ? "Laddar..."
-              : modes.find((m) => m.id === mode)?.label}
-          </button>
+          {mode === "login" && options?.passwordReset && (
+            <Link
+              to="/forgot-password"
+              className="block text-right text-sm font-semibold text-[var(--color-mint)]"
+            >
+              Glömt lösenordet?
+            </Link>
+          )}
+
+          <AuthSubmit pending={pending !== null}>
+            {pending === "form" ? "Laddar..." : (modes.find((m) => m.id === mode)?.label ?? "")}
+          </AuthSubmit>
         </form>
 
         <div className="flex items-center gap-3 my-6 text-[var(--color-text-muted)]">
@@ -189,7 +184,6 @@ export function Login() {
         <p className="mt-3 text-center text-sm text-[var(--color-text-muted)]">
           Ett tillfälligt konto med en ifylld budget. Ingen registrering.
         </p>
-      </div>
-    </div>
+    </AuthCard>
   );
 }

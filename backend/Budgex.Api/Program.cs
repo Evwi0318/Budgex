@@ -1,6 +1,7 @@
 using Budgex.Api.Endpoints;
 using Budgex.Application.Interfaces;
 using Budgex.Application.UseCases;
+using Budgex.Infrastructure.Email;
 using Budgex.Infrastructure.Identity;
 using Budgex.Infrastructure.Persistence;
 using Budgex.Infrastructure.Repositories;
@@ -81,9 +82,33 @@ builder.Services
         options.Lockout.AllowedForNewUsers = true;
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Tokens.PasswordResetTokenProvider = SignedLinkTokenProvider.Name;
     })
     .AddRoles<IdentityRole<Guid>>()
-    .AddEntityFrameworkStores<BudgexDbContext>();
+    .AddEntityFrameworkStores<BudgexDbContext>()
+    .AddTokenProvider<SignedLinkTokenProvider>(SignedLinkTokenProvider.Name);
+
+builder.Services.AddSingleton(TimeProvider.System);
+
+// Utan e-posttjänst registreras ingen avsändare, och då är återställning av
+// lösenord avstängd i stället för halvfärdig
+var emailSettings = builder.Configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>()
+    ?? new EmailSettings();
+builder.Services.AddSingleton(emailSettings);
+
+if (!string.IsNullOrWhiteSpace(emailSettings.ResendApiKey))
+{
+    builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>(client =>
+    {
+        client.BaseAddress = new Uri("https://api.resend.com/");
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", emailSettings.ResendApiKey);
+    });
+}
+else if (!string.IsNullOrWhiteSpace(emailSettings.PickupDirectory))
+{
+    builder.Services.AddSingleton<IEmailSender>(new PickupDirectoryEmailSender(emailSettings.PickupDirectory));
+}
 
 builder.Services
     .AddAuthentication(options =>
@@ -133,6 +158,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 Window = TimeSpan.FromMinutes(1),
                 PermitLimit = 60
+            }));
+
+    // Varje begäran kan skicka ett mejl, så taket är lågt: mejlbomba någon
+    // eller pröva adresser i mängd ska inte gå
+    options.AddPolicy(PasswordResetEndpoints.RateLimitPolicy, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(15),
+                PermitLimit = 5
             }));
 
     // Taket för allt annat. Inloggade endpoints är ägarskapsfiltrerade, så
@@ -188,6 +224,7 @@ app.UseAuthorization();
 
 app.MapGet("/api/health", () => new { status = "healthy" });
 app.MapAuthEndpoints();
+app.MapPasswordResetEndpoints();
 app.MapEntryEndpoints();
 app.MapSavingsEndpoints();
 app.MapProfileEndpoints();
