@@ -10,7 +10,7 @@ public sealed class PickupDirectoryEmailSender(string directory) : IEmailSender
     {
         Directory.CreateDirectory(directory);
 
-        var file = Path.Combine(directory, $"{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.txt");
+        var file = Path.Join(directory, $"{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.txt");
         var content = $"Till: {message.To}\nÄmne: {message.Subject}\n\n{message.Text}";
 
         await File.WriteAllTextAsync(file, content, cancellationToken);
