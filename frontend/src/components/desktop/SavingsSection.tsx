@@ -25,7 +25,7 @@ export function SavingsSection({
 }: SavingsSectionProps) {
   const { data: savings, isLoading } = useSavingsQuery(year, month);
   const [adding, setAdding] = useState(false);
-  const editor = useSavingsEditor(year, month, savings, adding, () =>
+  const editor = useSavingsEditor(year, month, savings, plan.summary, adding, () =>
     setAdding(false)
   );
 
@@ -73,7 +73,7 @@ export function SavingsSection({
       ) : (
         <>
           <button
-            onClick={() => editor.transferAll.mutate(!allDone)}
+            onClick={editor.toggleAll}
             disabled={isLocked}
             className={`mb-2 flex min-h-[46px] w-full flex-col items-center justify-center gap-1 rounded-[14px] border px-3.5 py-2.5 text-[13px] font-extrabold transition ${
               allDone

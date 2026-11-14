@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { draftAmount, goalProgress, monthlyFromItems } from "./savings";
+import { draftAmount, fundingWarning, goalProgress, monthlyFromItems } from "./savings";
 
 // Intl skiljer tusental med hårt mellanslag; testet ska inte falla på tecknet
 const plain = (value: string) => value.replace(/[\u00a0\u202f]/g, " ");
@@ -77,5 +77,26 @@ describe("monthlyFromItems", () => {
 
   it("avrundar uppåt så att året täcks", () => {
     expect(monthlyFromItems([item(1000)])).toBe(84);
+  });
+});
+
+describe("fundingWarning", () => {
+  const summary = { income: 12000, totalExpenses: 10000, totalSavings: 1000, safeToSpend: 1000 };
+  const salary = { sourceEntryId: "s", name: "Lön", available: 20000, allocated: 0, status: "Ok" as const };
+
+  it("är tom när planen går ihop", () => {
+    expect(fundingWarning(summary, [salary])).toBeNull();
+  });
+
+  it("visar exakt hur mycket planen överstiger inkomsten", () => {
+    const warning = fundingWarning({ ...summary, safeToSpend: -2000 }, [salary]);
+
+    expect(plain(warning ?? "")).toBe("Planen överstiger inkomsten med 2 000 kr.");
+  });
+
+  it("visar överskottet för en överfördelad källa", () => {
+    const over = { ...salary, allocated: 24000, status: "Over" as const };
+
+    expect(plain(fundingWarning(summary, [over]) ?? "")).toBe("Lön är överfördelad med 4 000 kr.");
   });
 });

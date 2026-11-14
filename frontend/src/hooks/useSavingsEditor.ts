@@ -5,6 +5,8 @@ import {
   useTransferMutation,
 } from "./useSavingsMutation";
 import type { SavingsAccount, SavingsMonth } from "./useSavingsQuery";
+import type { MonthSummary } from "./useMonthPlanQuery";
+import { fundingWarning } from "../lib/savings";
 
 /**
  * Sparkontolistan och dess ark. Mobilfliken låter FAB:en äga "lägg till",
@@ -14,6 +16,7 @@ export function useSavingsEditor(
   year: number,
   month: number,
   savings: SavingsMonth | undefined,
+  summary: MonthSummary,
   adding: boolean,
   closeAdding: () => void
 ) {
@@ -26,6 +29,9 @@ export function useSavingsEditor(
   const [discarding, setDiscarding] = useState(false);
   const [removing, setRemoving] = useState<SavingsAccount | null>(null);
   const [showTransferred, setShowTransferred] = useState(false);
+  const [pendingTransfer, setPendingTransfer] = useState<SavingsAccount | "all" | null>(null);
+
+  const warning = savings ? fundingWarning(summary, savings.sources) : null;
 
   const accounts = savings?.accounts ?? [];
   const remaining = accounts.filter((account) => !account.isTransferred);
@@ -42,6 +48,15 @@ export function useSavingsEditor(
     setDirty(false);
     setDiscarding(false);
   };
+
+  const markTransferred = (target: SavingsAccount | "all", acknowledged: boolean) =>
+    target === "all"
+      ? transferAll.mutate({ isTransferred: true, acknowledged })
+      : transfer.mutate({ id: target.id, isTransferred: true, acknowledged });
+
+  // Bara den som bockar i behöver se varningen. Att ångra är alltid fritt.
+  const requestTransfer = (target: SavingsAccount | "all") =>
+    warning ? setPendingTransfer(target) : markTransferred(target, false);
 
   return {
     accounts,
@@ -67,6 +82,21 @@ export function useSavingsEditor(
       deleteAccount.mutate(removing.id, { onSuccess: () => setRemoving(null) }),
     transfer,
     transferAll,
+    warning,
+    pendingTransfer,
+    toggleTransfer: (account: SavingsAccount) =>
+      account.isTransferred
+        ? transfer.mutate({ id: account.id, isTransferred: false })
+        : requestTransfer(account),
+    toggleAll: () =>
+      remaining.length === 0
+        ? transferAll.mutate({ isTransferred: false })
+        : requestTransfer("all"),
+    confirmTransfer: () => {
+      if (pendingTransfer) markTransferred(pendingTransfer, true);
+      setPendingTransfer(null);
+    },
+    cancelTransfer: () => setPendingTransfer(null),
   };
 }
 

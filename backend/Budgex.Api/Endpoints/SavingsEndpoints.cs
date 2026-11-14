@@ -5,6 +5,7 @@ using Budgex.Application.UseCases;
 using Budgex.Domain.Common;
 using Budgex.Domain.Entities;
 using Budgex.Domain.Savings;
+using System.Globalization;
 using System.Security.Claims;
 using static Budgex.Api.Endpoints.EndpointHelpers;
 
@@ -109,14 +110,22 @@ public static class SavingsEndpoints
             TransferredRequest request,
             IEntryRepository entryRepo,
             ISavingsRepository repo,
+            GetMonthPlan monthPlan,
+            GetSavingsMonth savingsMonth,
             ClaimsPrincipal user) =>
         {
             if (!TryMonth(year, month, out var key)) return BadRequest("Ogiltig månad.");
 
-            var account = await repo.GetByIdAsync(id, user.GetUserId());
+            var userId = user.GetUserId();
+            var account = await repo.GetByIdAsync(id, userId);
             if (account is null) return Results.NotFound();
 
-            var amounts = await SourceAmounts(entryRepo, user.GetUserId(), key);
+            if (await Unacknowledged(request, monthPlan, savingsMonth, userId, key) is IResult warning)
+            {
+                return warning;
+            }
+
+            var amounts = await SourceAmounts(entryRepo, userId, key);
 
             return await SetTransferred(repo, [account], key, amounts, request.IsTransferred);
         });
@@ -126,17 +135,56 @@ public static class SavingsEndpoints
             TransferredRequest request,
             IEntryRepository entryRepo,
             ISavingsRepository repo,
+            GetMonthPlan monthPlan,
+            GetSavingsMonth savingsMonth,
             ClaimsPrincipal user) =>
         {
             if (!TryMonth(year, month, out var key)) return BadRequest("Ogiltig månad.");
 
             var userId = user.GetUserId();
+
+            if (await Unacknowledged(request, monthPlan, savingsMonth, userId, key) is IResult warning)
+            {
+                return warning;
+            }
+
             var accounts = (await repo.GetForUserAsync(userId)).Where(account => account.LiveIn(key));
             var amounts = await SourceAmounts(entryRepo, userId, key);
 
             return await SetTransferred(repo, accounts, key, amounts, request.IsTransferred);
         });
     }
+
+    // En överföring som planen inte har täckning för är tillåten, men bara när
+    // användaren sett varningen. Ångra kräver aldrig bekräftelse.
+    private static async Task<IResult?> Unacknowledged(
+        TransferredRequest request,
+        GetMonthPlan monthPlan,
+        GetSavingsMonth savingsMonth,
+        Guid userId,
+        MonthKey month)
+    {
+        if (!request.IsTransferred || request.Acknowledged) return null;
+
+        var shortfall = -(await monthPlan.ExecuteAsync(userId, month)).Summary.SafeToSpend;
+        if (shortfall > 0)
+        {
+            return Underfunded($"Planen överstiger inkomsten med {Kr(shortfall)}.");
+        }
+
+        var over = (await savingsMonth.ExecuteAsync(userId, month)).Sources
+            .FirstOrDefault(source => source.Status == nameof(SourceStatus.Over));
+
+        return over is null
+            ? null
+            : Underfunded($"{over.Name} är överfördelad med {Kr(over.Allocated - over.Available)}.");
+    }
+
+    private static IResult Underfunded(string message) =>
+        Results.Conflict(new { message, needsAcknowledgement = true });
+
+    private static string Kr(decimal amount) =>
+        amount.ToString("#,0", CultureInfo.InvariantCulture).Replace(',', '\u00a0') + "\u00a0kr";
 
     private static async Task<IResult> SetTransferred(
         ISavingsRepository repo,
@@ -219,4 +267,4 @@ public sealed record SavingsAccountRequest(
     List<SavingsItemDto>? Items
 );
 
-public sealed record TransferredRequest(bool IsTransferred);
+public sealed record TransferredRequest(bool IsTransferred, bool Acknowledged = false);

@@ -216,6 +216,64 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task Transfer_WhenPlanExceedsIncome_NeedsAcknowledgement()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 12000m);
+        await ExpenseAsync(client, "Hyra", 10000m);
+        var id = await CreateAsync(client, AugustSavings, Fixed(salary, 4000m));
+
+        var refused = await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true });
+        var warning = await refused.Content.ReadFromJsonAsync<WarningDto>();
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.True(warning!.NeedsAcknowledgement);
+        Assert.Equal("Planen överstiger inkomsten med 2\u00a0000\u00a0kr.", warning.Message);
+        Assert.False(Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts).IsTransferred);
+
+        var acknowledged = await client.PutAsJsonAsync(
+            $"{AugustSavings}/{id}/transferred", new { isTransferred = true, acknowledged = true });
+
+        Assert.Equal(HttpStatusCode.NoContent, acknowledged.StatusCode);
+        Assert.True(Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts).IsTransferred);
+    }
+
+    [Fact]
+    public async Task MarkAll_WhenASourceIsOverAllocated_NeedsAcknowledgement()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+        await IncomeAsync(client, "Försäljning", "Sale", 10000m);
+        await CreateAsync(client, AugustSavings, Percent(salary, 70m));
+        await CreateAsync(client, AugustSavings, Percent(salary, 50m));
+
+        var refused = await client.PutAsJsonAsync($"{AugustSavings}/transferred", new { isTransferred = true });
+        var warning = await refused.Content.ReadFromJsonAsync<WarningDto>();
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("Lön är överfördelad med 4\u00a0000\u00a0kr.", warning!.Message);
+
+        var acknowledged = await client.PutAsJsonAsync(
+            $"{AugustSavings}/transferred", new { isTransferred = true, acknowledged = true });
+
+        Assert.Equal(HttpStatusCode.NoContent, acknowledged.StatusCode);
+    }
+
+    [Fact]
+    public async Task Undo_NeverNeedsAcknowledgement()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 12000m);
+        await ExpenseAsync(client, "Hyra", 10000m);
+        var id = await CreateAsync(client, AugustSavings, Fixed(salary, 4000m));
+
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true, acknowledged = true });
+        var undo = await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = false });
+
+        Assert.Equal(HttpStatusCode.NoContent, undo.StatusCode);
+    }
+
+    [Fact]
     public async Task MarkAll_TransfersEveryAccountInTheMonth()
     {
         var client = await AuthenticateAsync();
@@ -355,6 +413,21 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<Guid>())!;
     }
 
+    private static async Task ExpenseAsync(HttpClient client, string name, decimal amount)
+    {
+        var response = await client.PostAsJsonAsync(AugustEntries, new
+        {
+            kind = "Expense",
+            name,
+            category = "Housing",
+            amount,
+            isAutogiro = false,
+            repeats = true,
+        });
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+    }
+
     private static async Task<SavingsMonthDto> SavingsAsync(HttpClient client, string month) =>
         (await client.GetFromJsonAsync<SavingsMonthDto>(month))!;
 
@@ -373,6 +446,8 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
 
         return client;
     }
+
+    private sealed record WarningDto(string Message, bool NeedsAcknowledgement);
 
     private sealed record TokenDto(string AccessToken, DateTime RefreshTokenExpiresAt);
 
