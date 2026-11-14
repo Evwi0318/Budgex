@@ -4,6 +4,7 @@ import { useMonth } from "../../hooks/useMonth";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfileQuery } from "../../hooks/useProfileQuery";
 import { formatMonthYear } from "../../lib/format";
+import { Logo } from "../ui/Logo";
 import { initials } from "../../lib/initials";
 import { isPast } from "../../lib/month";
 import type { ReactNode } from "react";
@@ -21,12 +22,9 @@ export function DesktopTopBar() {
     <header className="grid h-[66px] shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-[var(--color-border)] px-[clamp(18px,3vw,40px)]">
       <Link
         to="/"
-        className="flex items-center gap-2.5 text-[16px] font-extrabold tracking-[-0.02em]"
+        className="text-[16px]"
       >
-        <span className="grid h-[25px] w-[25px] place-items-center rounded-lg bg-[var(--color-mint)] text-[14px] font-extrabold text-[var(--color-on-mint)]">
-          B
-        </span>
-        Budgex
+        <Logo size={25} />
       </Link>
 
       {pathname === "/" ? (

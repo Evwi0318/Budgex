@@ -1,4 +1,4 @@
-# Budgex
+# Divunds
 
 > A minimalistic budget app that answers one question: how much do I have left to spend this month?
 
@@ -6,7 +6,7 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 
-Budgex is a simple budgeting app for students and people with mixed income. It calculates safe-to-spend and automatically works out how much to move to each savings account every month. It will be Installable on mobile and available as a desktop web app.
+Divunds (formerly Budgex) is a simple payday planning app for students and people with mixed income. It calculates safe-to-spend and automatically works out how much to move to each savings account every month. It will be Installable on mobile and available as a desktop web app.
 
 <!-- TODO (Fas 7): screenshots / GIF -->
 
@@ -16,7 +16,7 @@ Budgex is a simple budgeting app for students and people with mixed income. It c
 
 Press **Testa demo** on the sign-in screen. No registration: the API creates a throwaway account seeded with three months of a student budget — salary and study grant, rent and bills, two savings accounts with allocation rules — so every screen has something in it. The account is yours alone, so nothing you change there affects anyone else, and it is deleted after a week.
 
-To use the app for real instead, register with an email address and a password of at least 8 characters; there is no confirmation mail. The API runs on Cloud Run and scales to zero, so the first request after an idle period may take a moment while the container starts.
+To use the app for real instead, register with an email address and a password of at least 8 characters; there is no confirmation mail. The live URL still uses the old project name until a Divunds domain is set up. The API runs on Cloud Run and scales to zero, so the first request after an idle period may take a moment while the container starts.
 
 ## Tech stack
 
@@ -27,6 +27,10 @@ To use the app for real instead, register with an email address and a password o
 - **Testing:** xUnit, Vitest + React Testing Library
 - **CI/CD:** GitHub Actions
 - **Hosting:** Vercel (frontend), Google Cloud Run (API), Neon (database)
+
+## Naming
+
+Only user-facing branding is called Divunds. C# namespaces and projects (`Budgex.*`), `BudgexDbContext`, EF migrations, the database, the Cloud Run service `budgex-api`, the Vercel project and the JWT issuer keep the Budgex name on purpose: renaming them would force migrations, redeploys or a forced logout without changing anything for users. See [`docs/divunds-name-checklist.md`](./docs/divunds-name-checklist.md) for the checks the owner has to do before using the name publicly.
 
 ## Architecture
 

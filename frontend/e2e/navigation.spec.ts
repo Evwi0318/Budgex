@@ -103,3 +103,13 @@ test("inloggad som öppnar /login hamnar hemma", async ({ page }) => {
   await expect(page.getByRole("button", { name: /^Utgifter/ })).toBeVisible();
   await expect(page).toHaveURL(/\/$/);
 });
+
+test("inloggningen visar Divunds som namn", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/auth/refresh", (route) => route.fulfill({ status: 401 }));
+
+  await page.goto("/login");
+
+  await expect(page).toHaveTitle("Divunds");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Divunds");
+});
