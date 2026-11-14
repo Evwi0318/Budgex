@@ -1,6 +1,7 @@
 using Budgex.Application.Interfaces;
 using Budgex.Domain.Common;
 using Budgex.Domain.Entities;
+using Budgex.Domain.Savings;
 using Budgex.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,17 +45,80 @@ public sealed class SavingsRepository(BudgexDbContext db) : ISavingsRepository
         return Task.CompletedTask;
     }
 
-    public Task SaveStatesAsync(IEnumerable<SavingsMonthState> states)
+    // Varje steg är en villkorad uppdatering, så två samtidiga anrop kan inte
+    // båda se kontot som ej överfört och räkna in beloppet två gånger
+    public async Task<bool> SetTransferredAsync(
+        IReadOnlyList<PlannedTransfer> transfers, MonthKey month, bool isTransferred)
     {
-        foreach (var state in states)
+        await using var transaction = await db.Database.BeginTransactionAsync();
+
+        foreach (var transfer in transfers)
         {
-            if (db.Entry(state).State == EntityState.Detached)
+            if (isTransferred)
             {
-                db.SavingsMonthStates.Add(state);
+                await TransferAsync(transfer, month);
+            }
+            else if (!await UndoAsync(transfer.AccountId, month))
+            {
+                return false;
             }
         }
 
-        return Task.CompletedTask;
+        await transaction.CommitAsync();
+        return true;
+    }
+
+    private async Task TransferAsync(PlannedTransfer transfer, MonthKey month)
+    {
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO "SavingsMonthStates" ("Id", "SavingsAccountId", "Month", "IsTransferred")
+            VALUES ({Guid.NewGuid()}, {transfer.AccountId}, {month.ToString()}, false)
+            ON CONFLICT ("SavingsAccountId", "Month") DO NOTHING
+            """);
+
+        var marked = await db.SavingsMonthStates
+            .Where(state => state.SavingsAccountId == transfer.AccountId
+                            && state.Month == month
+                            && !state.IsTransferred)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(state => state.IsTransferred, true)
+                .SetProperty(state => state.Amount, (decimal?)transfer.Amount));
+
+        if (marked == 1)
+        {
+            await db.SavingsAccounts
+                .Where(account => account.Id == transfer.AccountId)
+                .ExecuteUpdateAsync(set => set.SetProperty(
+                    account => account.Saved,
+                    account => (decimal?)((account.Saved ?? 0) + transfer.Amount)));
+        }
+    }
+
+    private async Task<bool> UndoAsync(Guid accountId, MonthKey month)
+    {
+        var state = await db.SavingsMonthStates
+            .AsNoTracking()
+            .FirstOrDefaultAsync(candidate => candidate.SavingsAccountId == accountId
+                                              && candidate.Month == month
+                                              && candidate.IsTransferred);
+        if (state is null) return true;
+
+        var unmarked = await db.SavingsMonthStates
+            .Where(candidate => candidate.Id == state.Id && candidate.IsTransferred)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(candidate => candidate.IsTransferred, false)
+                .SetProperty(candidate => candidate.Amount, (decimal?)null));
+
+        var amount = state.Amount ?? 0;
+        if (unmarked == 0 || amount == 0) return true;
+
+        var debited = await db.SavingsAccounts
+            .Where(account => account.Id == accountId && (account.Saved ?? 0) >= amount)
+            .ExecuteUpdateAsync(set => set.SetProperty(
+                account => account.Saved,
+                account => (decimal?)((account.Saved ?? 0) - amount)));
+
+        return debited == 1;
     }
 
     public Task SaveChangesAsync() =>

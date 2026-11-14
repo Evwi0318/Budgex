@@ -5,6 +5,7 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import type { SavingsEditor } from "../../hooks/useSavingsEditor";
 import type { MonthPlan } from "../../hooks/useMonthPlanQuery";
 import type { SavingsMonth } from "../../hooks/useSavingsQuery";
+import { saveError } from "../../lib/apiError";
 
 interface SavingsListProps {
   editor: SavingsEditor;
@@ -13,8 +14,18 @@ interface SavingsListProps {
 }
 
 export function SavingsList({ editor, sources, locked }: SavingsListProps) {
+  const transferError = editor.transfer.error ?? editor.transferAll.error;
+
   return (
     <>
+      {transferError && (
+        <p
+          role="alert"
+          className="mb-2 rounded-[14px] bg-[var(--color-danger-wash)] px-3.5 py-3 text-[13px] font-semibold text-[var(--color-danger)]"
+        >
+          {saveError(transferError)}
+        </p>
+      )}
       {editor.visible.map((account) => (
         <SavingsRow
           key={account.id}

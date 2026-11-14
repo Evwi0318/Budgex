@@ -117,12 +117,8 @@ public static class SavingsEndpoints
             if (account is null) return Results.NotFound();
 
             var amounts = await SourceAmounts(entryRepo, user.GetUserId(), key);
-            var states = await repo.GetStatesForMonthAsync(user.GetUserId(), key);
 
-            await repo.SaveStatesAsync([Mark(account, key, states, amounts, request.IsTransferred)]);
-            await repo.SaveChangesAsync();
-
-            return Results.NoContent();
+            return await SetTransferred(repo, [account], key, amounts, request.IsTransferred);
         });
 
         group.MapPut("/transferred", async (
@@ -135,51 +131,30 @@ public static class SavingsEndpoints
             if (!TryMonth(year, month, out var key)) return BadRequest("Ogiltig månad.");
 
             var userId = user.GetUserId();
-            var accounts = await repo.GetForUserAsync(userId);
+            var accounts = (await repo.GetForUserAsync(userId)).Where(account => account.LiveIn(key));
             var amounts = await SourceAmounts(entryRepo, userId, key);
-            var states = await repo.GetStatesForMonthAsync(userId, key);
 
-            var marked = accounts
-                .Where(account => account.LiveIn(key))
-                .Select(account => Mark(account, key, states, amounts, request.IsTransferred))
-                .ToList();
-
-            await repo.SaveStatesAsync(marked);
-            await repo.SaveChangesAsync();
-
-            return Results.NoContent();
+            return await SetTransferred(repo, accounts, key, amounts, request.IsTransferred);
         });
     }
 
-    private static SavingsMonthState Mark(
-        SavingsAccount account,
+    private static async Task<IResult> SetTransferred(
+        ISavingsRepository repo,
+        IEnumerable<SavingsAccount> accounts,
         MonthKey month,
-        IReadOnlyList<SavingsMonthState> states,
         IReadOnlyDictionary<Guid, decimal> amounts,
         bool isTransferred)
     {
-        var state = states.FirstOrDefault(s => s.SavingsAccountId == account.Id && s.Month == month)
-                    ?? new SavingsMonthState { SavingsAccountId = account.Id, Month = month };
+        var transfers = accounts
+            .Select(account => new PlannedTransfer(account.Id, SavingsPlan.PlannedTotal(account, amounts)))
+            .ToList();
 
-        if (state.IsTransferred == isTransferred)
-        {
-            return state;
-        }
-
-        if (isTransferred)
-        {
-            state.Amount = SavingsPlan.PlannedTotal(account, amounts);
-            account.Saved = (account.Saved ?? 0) + state.Amount.Value;
-        }
-        else
-        {
-            account.Saved = Math.Max(0, (account.Saved ?? 0) - (state.Amount ?? 0));
-            state.Amount = null;
-        }
-
-        state.IsTransferred = isTransferred;
-
-        return state;
+        return await repo.SetTransferredAsync(transfers, month, isTransferred)
+            ? Results.NoContent()
+            : Results.Conflict(new
+            {
+                message = "Sparat belopp har ändrats efter överföringen och räcker inte för att ångra den. Justera sparat belopp först."
+            });
     }
 
     private static async Task<Dictionary<Guid, decimal>> SourceAmounts(
