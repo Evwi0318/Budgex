@@ -124,3 +124,18 @@ One branch and one PR per phase, merged only on green CI:
 
 Phase 2's F1 fix is the most urgent change in the repository; it can be moved ahead of the
 rebrand if the owner prefers.
+
+## 10. Resolution log
+
+| Finding | Outcome | PR |
+|---|---|---|
+| F1 | Fixed: omitted `saved` leaves the balance unchanged | #76 |
+| F2 | Fixed: the form sends `saved` only when the user changed it | #78 |
+| F3 | Fixed: undo never clamps; it is refused with 409 when the balance no longer covers it | #78 |
+| F4 | Fixed: transfers are transactional, conditional updates; parallel requests count once | #78 |
+| F5, F6 | Fixed: transfers in an underfunded month need acknowledgement (ADR 0004) | #79 |
+| F7 | By design: a fixed rule keeps its amount when its source is gone, so the month shows a shortfall and transfers need acknowledgement instead of the plan silently shrinking | this PR (test) |
+| F8 | Fixed: rounding policy (ADR 0005), more than two decimals rejected | #80 |
+| D1 | Fixed: an entry's kind cannot change through update | this PR |
+| D2 | Fixed: update, delete and paid return 404 for a month the entry is not live in | this PR |
+| D4 | Partly fixed: a failed Identity deletion now returns an error instead of 204. Domain data and Identity are still deleted in two steps, by design (see comment in `ProfileEndpoints`) | this PR |

@@ -84,9 +84,10 @@ public static class ProfileEndpoints
             }
 
             var applicationUser = await userManager.FindByIdAsync(userId.ToString());
-            if (applicationUser is not null)
+            if (applicationUser is not null
+                && !(await userManager.DeleteAsync(applicationUser)).Succeeded)
             {
-                await userManager.DeleteAsync(applicationUser);
+                return Results.Problem("Kontot kunde inte tas bort helt. Försök igen.");
             }
 
             return Results.NoContent();

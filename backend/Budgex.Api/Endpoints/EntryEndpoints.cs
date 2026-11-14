@@ -65,13 +65,14 @@ public static class EntryEndpoints
             if (Validate(request) is string invalid) return BadRequest(invalid);
 
             var entry = await repo.GetByIdAsync(id, user.GetUserId());
-            if (entry is null) return Results.NotFound();
+            if (entry is null || !entry.LiveIn(key)) return Results.NotFound();
+            if (kind != entry.Kind) return BadRequest("En inkomst kan inte göras om till en utgift eller tvärtom.");
 
             // Namn, kategori och autogiro hör till mallen — de är inga
             // avvikelser och ändras därför alltid för alla månader
             entry.Name = request.Name.Trim();
             entry.Category = category;
-            entry.IsAutogiro = kind == EntryKind.Expense && request.IsAutogiro;
+            entry.IsAutogiro = entry.Kind == EntryKind.Expense && request.IsAutogiro;
 
             // "Gäller" i formuläret: posten slutar efter den här månaden, eller
             // fortsätter tills vidare. Utelämnas fältet står valet kvar som det var,
@@ -108,7 +109,7 @@ public static class EntryEndpoints
             if (ParseScope(scope) is not EntryScopeOption chosen) return BadRequest("Okänd omfattning.");
 
             var entry = await repo.GetByIdAsync(id, user.GetUserId());
-            if (entry is null) return Results.NotFound();
+            if (entry is null || !entry.LiveIn(key)) return Results.NotFound();
 
             var change = chosen == EntryScopeOption.Onwards
                 ? EntryScope.EndOnwards(entry, key)
@@ -134,7 +135,7 @@ public static class EntryEndpoints
             if (!TryMonth(year, month, out var key)) return BadRequest("Ogiltig månad.");
 
             var entry = await repo.GetByIdAsync(id, user.GetUserId());
-            if (entry is null) return Results.NotFound();
+            if (entry is null || !entry.LiveIn(key)) return Results.NotFound();
             if (entry.IsAutogiro) return BadRequest("Autogiroposter bockas inte av.");
 
             var state = await FindState(repo, entry.Id, key)

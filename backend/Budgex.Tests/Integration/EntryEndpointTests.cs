@@ -125,6 +125,58 @@ public sealed class EntryEndpointTests(AuthApiFactory factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Update_ChangingIncomeToExpense_IsRejected()
+    {
+        var client = await AuthenticateAsync();
+        await client.PostAsJsonAsync(August, new
+        {
+            kind = "Income", name = "Lön", category = "Salary",
+            amount = 22000m, isAutogiro = false, repeats = true
+        });
+        var income = Assert.Single((await PlanAsync(client, August)).Income);
+
+        var response = await client.PutAsJsonAsync($"{August}/{income.Id}", new
+        {
+            kind = "Expense", name = "Lön", category = "Food",
+            amount = 22000m, isAutogiro = true, scope = "Onwards"
+        });
+
+        var unchanged = Assert.Single((await PlanAsync(client, August)).Income);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("Salary", unchanged.Category);
+        Assert.False(unchanged.IsAutogiro);
+    }
+
+    [Fact]
+    public async Task Update_InAMonthBeforeTheEntryStarts_IsNotFoundAndKeepsTheEntry()
+    {
+        var client = await AuthenticateAsync();
+        var id = await CreateAsync(client, August, repeats: true);
+
+        var response = await client.PutAsJsonAsync($"{July}/{id}", new
+        {
+            kind = "Expense", name = "Hyra", category = "Housing",
+            amount = 7500m, isAutogiro = false, repeats = false, scope = "Onwards"
+        });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Single((await PlanAsync(client, August)).Expenses);
+        Assert.Single((await PlanAsync(client, September)).Expenses);
+    }
+
+    [Fact]
+    public async Task Delete_InAMonthBeforeTheEntryStarts_IsNotFound()
+    {
+        var client = await AuthenticateAsync();
+        var id = await CreateAsync(client, August, repeats: true);
+
+        var response = await client.DeleteAsync($"{July}/{id}?scope=Onwards");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Single((await PlanAsync(client, August)).Expenses);
+    }
+
     [Theory]
     [InlineData(7500.5)]
     [InlineData(7500.25)]
