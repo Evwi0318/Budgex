@@ -8,6 +8,7 @@ import {
   KeyRound,
   LogOut,
   Mail,
+  MonitorSmartphone,
   Trash2,
 } from "lucide-react";
 import { BottomSheet } from "../components/ui/BottomSheet";
@@ -18,6 +19,7 @@ import { useAuth } from "../hooks/useAuth";
 import { initials } from "../lib/initials";
 import {
   useDeleteAccountMutation,
+  useLogoutAllMutation,
   useProfileQuery,
 } from "../hooks/useProfileQuery";
 
@@ -27,9 +29,11 @@ export function Profile() {
   const { userEmail, logout } = useAuth();
   const { data: profile } = useProfileQuery();
   const deleteAccount = useDeleteAccountMutation();
+  const logoutAll = useLogoutAllMutation();
 
   const [sheet, setSheet] = useState<Sheet>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingLogoutAll, setConfirmingLogoutAll] = useState(false);
 
   const email = profile?.email ?? userEmail ?? "";
   const name = profile?.name ?? null;
@@ -82,6 +86,11 @@ export function Profile() {
       <Group label="Session">
         <Row icon={LogOut} label="Logga ut" onClick={logout} />
         <Row
+          icon={MonitorSmartphone}
+          label="Logga ut från alla enheter"
+          onClick={() => setConfirmingLogoutAll(true)}
+        />
+        <Row
           icon={Trash2}
           label="Ta bort konto"
           danger
@@ -95,6 +104,16 @@ export function Profile() {
         )}
         {sheet === "password" && <PasswordForm onDone={() => setSheet(null)} />}
       </BottomSheet>
+
+      <ConfirmDialog
+        open={confirmingLogoutAll}
+        title="Logga ut från alla enheter?"
+        body="Alla inloggningar avslutas, även den här. En app som redan är öppen på en annan enhet kan fungera i upp till 15 minuter till."
+        actions={[{ label: "Logga ut överallt", tone: "danger" }]}
+        cancelLabel="Avbryt"
+        onPick={() => logoutAll.mutate(undefined, { onSuccess: logout })}
+        onCancel={() => setConfirmingLogoutAll(false)}
+      />
 
       <ConfirmDialog
         open={confirmingDelete}

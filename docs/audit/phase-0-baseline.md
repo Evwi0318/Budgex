@@ -139,3 +139,5 @@ rebrand if the owner prefers.
 | D1 | Fixed: an entry's kind cannot change through update | this PR |
 | D2 | Fixed: update, delete and paid return 404 for a month the entry is not live in | this PR |
 | D4 | Partly fixed: a failed Identity deletion now returns an error instead of 204. Domain data and Identity are still deleted in two steps, by design (see comment in `ProfileEndpoints`) | this PR |
+| S2 | Fixed: unknown e-mail, wrong password and locked account all return the same 401, with equalised hashing time | this PR |
+| S3 | Fixed: a password change revokes every refresh token; the client signs in again. New "Logga ut från alla enheter". Access tokens still live up to 15 minutes | this PR |

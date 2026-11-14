@@ -20,7 +20,7 @@ test("profilen öppnas och bakåtpilen leder hem", async ({ page }) => {
   await page.getByRole("link", { name: "Profil" }).click();
 
   await expect(page.getByRole("heading", { name: "Profil" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Logga ut" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Logga ut", exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Tillbaka" }).click();
 

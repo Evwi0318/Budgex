@@ -49,3 +49,11 @@ export function useDeleteAccountMutation() {
     mutationFn: () => request<null>("/api/profile", { method: "DELETE" }),
   });
 }
+
+export function useLogoutAllMutation() {
+  const { request } = useApi();
+
+  return useMutation({
+    mutationFn: () => request<null>("/api/auth/logout-all", { method: "POST" }),
+  });
+}

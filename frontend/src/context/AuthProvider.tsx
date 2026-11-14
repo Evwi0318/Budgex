@@ -42,6 +42,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(USER_EMAIL_KEY, email);
   };
 
+  const signIn = async (email: string, password: string) => {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+
+    // 429 kommer från IP-spärren och säger inget om kontot. Ett låst konto
+    // svarar 401 som ett vanligt fel lösenord, därför nämns spärren här.
+    if (response.status === 429) {
+      throw new Error("För många försök. Vänta en minut och försök igen.");
+    }
+    if (!response.ok) {
+      throw new Error(
+        "Fel e-post eller lösenord. Efter flera misslyckade försök spärras inloggningen en stund."
+      );
+    }
+
+    const { accessToken } = await response.json();
+    if (!accessToken) throw new Error("Inloggningen gav ingen token. Försök igen.");
+
+    setAuth(accessToken, email);
+  };
+
   const logout = () => {
     setAccessToken(null);
     setUserEmail(null);
@@ -56,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken,
     userEmail,
     setAuth,
+    signIn,
     logout,
     isAuthenticated: accessToken !== null,
     isRestoring,

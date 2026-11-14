@@ -1,6 +1,7 @@
 using Budgex.Api.Extensions;
 using Budgex.Application.Interfaces;
 using Budgex.Infrastructure.Identity;
+using Budgex.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 
@@ -49,6 +50,7 @@ public static class ProfileEndpoints
         group.MapPut("/password", async (
             ChangePasswordRequest request,
             UserManager<ApplicationUser> userManager,
+            BudgexDbContext db,
             ClaimsPrincipal principal) =>
         {
             var applicationUser = await userManager.FindByIdAsync(principal.GetUserId().ToString());
@@ -61,6 +63,10 @@ public static class ProfileEndpoints
             {
                 return Results.BadRequest(new { errors = result.Errors.Select(e => e.Description) });
             }
+
+            // Den som byter lösenord för att någon annan kommit åt kontot ska
+            // kunna lita på att alla andra sessioner är ute. Klienten loggar in igen.
+            await AuthEndpoints.RevokeSessionsAsync(db, applicationUser.Id);
 
             return Results.NoContent();
         });

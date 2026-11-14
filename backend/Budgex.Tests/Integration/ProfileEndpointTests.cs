@@ -90,6 +90,24 @@ public sealed class ProfileEndpointTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task ChangePassword_SignsOutEveryOtherSession()
+    {
+        var (client, email) = await AuthenticateAsync();
+        var otherDevice = _factory.CreateClientWithCookies();
+        await otherDevice.PostAsJsonAsync("/api/auth/login", new { email, password = Password });
+
+        await client.PutAsJsonAsync($"{Profile}/password", new
+        {
+            currentPassword = Password,
+            newPassword = "Brandnew1!"
+        });
+
+        var refresh = await otherDevice.PostAsync("/api/auth/refresh", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, refresh.StatusCode);
+    }
+
+    [Fact]
     public async Task Delete_RemovesTheAccountSoItCannotSignInAgain()
     {
         var (client, email) = await AuthenticateAsync();

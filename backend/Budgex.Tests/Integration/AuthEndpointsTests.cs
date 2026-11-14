@@ -80,10 +80,60 @@ public sealed class AuthEndpointsTests(AuthApiFactory factory)
             await client.PostAsJsonAsync("/api/auth/login", new { email, password = "WrongPassword1!" });
         }
 
-        // Rätt lösenord ska inte längre släppa in — kontot är låst
+        // Rätt lösenord släpper inte in, men svaret får inte avslöja att
+        // kontot finns och är låst: det ska se ut som ett fel lösenord
         var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
 
-        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_UnknownEmailAndWrongPassword_GiveTheSameResponse()
+    {
+        var client = _factory.CreateClient();
+        var email = $"{Guid.NewGuid()}@budgex.se";
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Test1234!" });
+
+        var wrongPassword = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "WrongPassword1!" });
+        var unknownEmail = await client.PostAsJsonAsync(
+            "/api/auth/login", new { email = $"{Guid.NewGuid()}@budgex.se", password = "WrongPassword1!" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, wrongPassword.StatusCode);
+        Assert.Equal(wrongPassword.StatusCode, unknownEmail.StatusCode);
+        Assert.Equal(
+            await wrongPassword.Content.ReadAsStringAsync(),
+            await unknownEmail.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task LogoutAll_RevokesTheSessionsOnEveryDevice()
+    {
+        var phone = _factory.CreateClientWithCookies();
+        var laptop = _factory.CreateClientWithCookies();
+        var email = $"{Guid.NewGuid()}@budgex.se";
+        var password = "Test1234!";
+
+        await phone.PostAsJsonAsync("/api/auth/register", new { email, password });
+        var login = await phone.PostAsJsonAsync("/api/auth/login", new { email, password });
+        await laptop.PostAsJsonAsync("/api/auth/login", new { email, password });
+
+        var token = (await login.Content.ReadFromJsonAsync<AuthResponseDto>())!.AccessToken;
+        phone.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var loggedOut = await phone.PostAsync("/api/auth/logout-all", null);
+
+        Assert.Equal(HttpStatusCode.NoContent, loggedOut.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await laptop.PostAsync("/api/auth/refresh", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await phone.PostAsync("/api/auth/refresh", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task LogoutAll_WithoutAToken_IsUnauthorized()
+    {
+        var response = await _factory.CreateClient().PostAsync("/api/auth/logout-all", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
