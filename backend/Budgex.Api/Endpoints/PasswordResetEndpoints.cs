@@ -47,11 +47,14 @@ public static class PasswordResetEndpoints
             BudgexDbContext db) =>
         {
             var user = await userManager.FindByEmailAsync(request.Email);
-            var result = user is null
-                ? null
-                : await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+            if (user is null)
+            {
+                return BadRequest("Länken är ogiltig eller har gått ut. Begär en ny.");
+            }
 
-            if (user is null || result is null || result.Errors.Any(error => error.Code == "InvalidToken"))
+            var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+
+            if (result.Errors.Any(error => error.Code == "InvalidToken"))
             {
                 return BadRequest("Länken är ogiltig eller har gått ut. Begär en ny.");
             }
