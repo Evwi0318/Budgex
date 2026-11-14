@@ -116,6 +116,40 @@ public sealed class SavingsEndpointTests(AuthApiFactory factory)
     }
 
     [Fact]
+    public async Task Edit_WithoutSaved_KeepsTheTransferredBalance()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+        var id = await CreateAsync(client, AugustSavings, Fixed(salary, 1000m));
+
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true });
+        var edit = await client.PutAsJsonAsync($"{AugustSavings}/{id}", Body("Nytt namn", Fixed(salary, 1000m)));
+
+        Assert.Equal(HttpStatusCode.NoContent, edit.StatusCode);
+        Assert.Equal(1000m, Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts).Saved);
+    }
+
+    [Fact]
+    public async Task Edit_WithSaved_SetsTheBalance()
+    {
+        var client = await AuthenticateAsync();
+        var salary = await IncomeAsync(client, "Lön", "Salary", 20000m);
+        var id = await CreateAsync(client, AugustSavings, Fixed(salary, 1000m));
+
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}/transferred", new { isTransferred = true });
+        await client.PutAsJsonAsync($"{AugustSavings}/{id}", new
+        {
+            name = "Buffert",
+            icon = "🛟",
+            goal = 5000m,
+            saved = 0m,
+            rules = new[] { Fixed(salary, 1000m) },
+        });
+
+        Assert.Equal(0m, Assert.Single((await SavingsAsync(client, AugustSavings)).Accounts).Saved);
+    }
+
+    [Fact]
     public async Task MarkAll_TransfersEveryAccountInTheMonth()
     {
         var client = await AuthenticateAsync();

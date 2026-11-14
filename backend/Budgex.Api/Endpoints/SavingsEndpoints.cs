@@ -70,7 +70,9 @@ public static class SavingsEndpoints
             account.Name = request.Name.Trim();
             account.Icon = request.Icon;
             account.Goal = request.Goal;
-            account.Saved = request.Saved;
+            // Saldot byggs upp av överföringar. Utelämnat betyder orört, så att ett
+            // konto utan mål inte nollar det som redan förts över.
+            account.Saved = request.Saved ?? account.Saved;
             account.Items = Items(request);
 
             await repo.ReplaceRulesAsync(account, Rules(request, account.Id));
