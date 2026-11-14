@@ -4,12 +4,16 @@ import { PrivateRoute } from "./components/PrivateRoute";
 import { AppShell } from "./components/layout/AppShell";
 import { Home } from "./pages/Home";
 import { Profile } from "./pages/Profile";
+import { ForgotPassword } from "./pages/ForgotPassword";
+import { ResetPassword } from "./pages/ResetPassword";
 
 export const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
   },
+  { path: "/forgot-password", element: <ForgotPassword /> },
+  { path: "/reset-password", element: <ResetPassword /> },
   {
     // Allt under "/" ligger bakom inloggning och delar samma skal, som håller
     // månaden och vald flik. /savings finns kvar för gamla bokmärken och

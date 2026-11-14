@@ -25,6 +25,8 @@ public static class AuthEndpoints
 
     public const string RateLimitPolicy = "auth";
 
+    public static bool IsDemoEmail(string email) => email.EndsWith(DemoEmailSuffix);
+
     public static void MapAuthEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/auth").RequireRateLimiting(RateLimitPolicy);

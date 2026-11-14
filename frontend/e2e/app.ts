@@ -215,6 +215,7 @@ export async function mockApi(page: Page, overrides: Partial<Seed> = {}) {
 
     if (path === "/api/auth/refresh") return send({ accessToken: "test-token" });
     if (path === "/api/auth/logout") return send({});
+    if (path === "/api/auth/options") return send({ passwordReset: true });
     if (path === "/api/profile" && method === "GET") {
       return send({ email: "evan@budgex.test", name: "Evan Test" });
     }

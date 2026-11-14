@@ -1,7 +1,9 @@
+using Budgex.Application.Interfaces;
 using Budgex.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 
 namespace Budgex.Tests.Integration;
@@ -12,6 +14,8 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
     .WithUsername("postgres")
     .WithPassword("postgres")
     .Build();
+
+    public TestOutbox Outbox { get; } = new();
 
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
@@ -32,6 +36,9 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
 
             services.AddDbContext<BudgexDbContext>(options =>
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
+
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Outbox);
         });
     }
 
